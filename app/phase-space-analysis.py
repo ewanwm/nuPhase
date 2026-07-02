@@ -2,6 +2,7 @@
 from nuPhase.utils import carbon, oxygen, Molecule
 from nuPhase.sample import Sample, SubSample, Parameters, Binning, NuFlavour, NuisanceFile
 from nuPhase.selection import SelectionNumu0Pi1P0N, SelectionNue0Pi0P
+from nuPhase.oscillator import OscillationCalculator
 
 import typing
 from argparse import ArgumentParser
@@ -269,6 +270,9 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     target_material = {"oxygen": oxygen, "carbon": carbon}[args.detector_material]
+    output_file: str = args.output
+    if output_file.split(".")[-1] == "pdf":
+        output_file = ".".join(output_file.split(".")[:-1])
 
     nd_parameters = Parameters(args.pot, target_material, args.nd_mass)
     fd_parameters = Parameters(args.pot, target_material, args.fd_mass)
@@ -281,27 +285,41 @@ def main():
         target_material = target_material
     ).fill_from_file(file = NuisanceFile(args.nd_numu, pre_selection="Mode==1"), progress_bar = True)
 
+    oscillator = OscillationCalculator(295.0, initialisation="pdg")
+    
     fd_nue_nue_subsample = SubSample(
         label = "fd nue -> nue ",
         initial_flavour = NuFlavour.electron, 
         final_flavour = NuFlavour.electron, 
-        target_material = target_material
+        target_material = target_material,
+        oscillator = oscillator
     ).fill_from_file(file = NuisanceFile(args.fd_nue_nue, pre_selection="Mode==1"), progress_bar = True)
 
     fd_numu_nue_subsample = SubSample(
         label = "fd numu -> nue ",
         initial_flavour = NuFlavour.muon, 
         final_flavour = NuFlavour.electron, 
-        target_material = target_material
+        target_material = target_material,
+        oscillator = oscillator
     ).fill_from_file(file = NuisanceFile(args.fd_numu_nue, pre_selection="Mode==1"), progress_bar = True)
     
     binning = Binning(("q3", "q0"), (80, 80), ranges = ((0.0, 4.0), (0.0, 4.0)))
 
-    nd_numu_sample = Sample(binning, [nd_numu_subsample], nd_parameters, name = "ND Numu", baseline=None)
-    fd_nue_sample = Sample(binning, [fd_nue_nue_subsample, fd_numu_nue_subsample], fd_parameters, name = "FD nue", baseline=295.0)
+    nd_numu_sample = Sample(binning, [nd_numu_subsample], nd_parameters, name = "ND Numu")
+    fd_nue_sample = Sample(binning, [fd_nue_nue_subsample, fd_numu_nue_subsample], fd_parameters, name = "FD nue")
+
+    ## first do the analysis with no selections applied
 
     analysis = PhaseSpaceAnalysis(
-        args.output,
+        output_file + "-without-selections.pdf",
+        nd_numu = nd_numu_sample,
+        fd_nue = fd_nue_sample
+    )
+
+    analysis.run()
+
+    analysis = PhaseSpaceAnalysis(
+        output_file + "-with-selections.pdf",
         nd_numu = nd_numu_sample.apply_selection(
             SelectionNumu0Pi1P0N(muon_threshold = 0.2, pion_threshold = 0.1, proton_threshold = 0.1, neutron_threshold = 0.025),
             progress_bar = True

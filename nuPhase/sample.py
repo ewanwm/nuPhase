@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from nuPhase.utils import Molecule
-from nuPhase.oscillator import calculate_osc_probs
+from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event, Particle
 from nuPhase.selection import SelectionBase
 
@@ -132,16 +132,18 @@ class SubSample:
         label: str, 
         target_material: Molecule, 
         initial_flavour: NuFlavour, 
-        final_flavour: NuFlavour, 
+        final_flavour: NuFlavour,
+        oscillator: OscillationCalculator = None, 
         base_pot=1e21
     ):
 
-        self.label: str                 = label
-        self.base_pot:float             = base_pot
-        self.target_material: Molecule  = target_material
+        self.label: str                        = label
+        self.base_pot:float                    = base_pot
+        self.target_material: Molecule         = target_material
 
-        self.initial_flavour: NuFlavour = initial_flavour
-        self.final_flavour: NuFlavour   = final_flavour
+        self.initial_flavour: NuFlavour        = initial_flavour
+        self.final_flavour: NuFlavour          = final_flavour
+        self.oscillator: OscillationCalculator = oscillator
 
         ## these should be filled later
         self.events: typing.List[Event] = []
@@ -208,9 +210,10 @@ class SubSample:
             base_pot = self.base_pot
         )
 
-        new_subsample.flux_hist = self.flux_hist
+        new_subsample.flux_hist         = self.flux_hist
         new_subsample.fixed_flux_weight = self.fixed_flux_weight
         new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
+        new_subsample.oscillator        = self.oscillator
 
         return new_subsample
     
@@ -301,7 +304,7 @@ class SubSample:
 
         return new_subsample
     
-    def get_event_rate(self, binning: Binning, target_mass: float, pot: float, baseline: float, cut: typing.Callable = None):
+    def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None):
 
         v1 = self.get_array(binning.variables[0], cut)
 
@@ -311,10 +314,10 @@ class SubSample:
 
         ## caclulate oscillation weights if needed
         osc_weights = np.ones(v1.shape)
-        if baseline is not None:
+        if self.oscillator is not None:
             energies = self.get_array("Enu_true", cut)
-            osc_probs = calculate_osc_probs(energies, baseline = baseline)
-            osc_weights = osc_probs[:, self.initial_flavour, self.final_flavour]
+            osc_probs = self.oscillator.calculate_osc_probs(energies)
+            osc_weights = osc_probs.numpy()[:, self.initial_flavour, self.final_flavour]
 
         ## now make the histogram
         hist = None
@@ -337,8 +340,7 @@ class Sample:
         binning: Binning,
         subsamples: typing.List[SubSample],
         parameters: Parameters,
-        name: str,
-        baseline: float = None
+        name: str
     ):
         
         assert binning.n_dims <= 2, "only support 2d samples!!"
@@ -348,7 +350,6 @@ class Sample:
         self.binning = binning
         self.subsamples = subsamples
         self.parameters = parameters
-        self.baseline = baseline
         
         self.events = []
         for subsample in self.subsamples:
@@ -366,8 +367,7 @@ class Sample:
             binning = self.binning,
             subsamples = new_subsamples,
             parameters = self.parameters,
-            name = f'{self.name} [{selection.name}]',
-            baseline = self.baseline
+            name = f'{self.name} [{selection.name}]'
         )
 
         return new_sample
@@ -409,7 +409,6 @@ class Sample:
                 binning, 
                 target_mass=self.parameters.target_mass, 
                 pot = self.parameters.pot, 
-                baseline=self.baseline, 
                 cut=cut
             )
 
