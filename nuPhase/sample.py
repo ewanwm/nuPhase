@@ -5,11 +5,10 @@ import uproot
 from matplotlib import pyplot as plt
 import numpy as np
 
-from utils import Molecule
-from oscillator import calculate_osc_probs
-
-from event import Event, Particle
-from selection import SelectionBase
+from nuPhase.utils import Molecule
+from nuPhase.oscillator import calculate_osc_probs
+from nuPhase.event import Event, Particle
+from nuPhase.selection import SelectionBase
 
 from tqdm import tqdm
 

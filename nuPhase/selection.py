@@ -1,4 +1,4 @@
-from event import Event, Particle
+from nuPhase.event import Event, Particle
 
 import abc
 

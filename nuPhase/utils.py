@@ -1,12 +1,4 @@
-import typing
-
-import uproot
-
 from matplotlib import pyplot as plt
-
-import numpy as np
-
-from oscillator import calculate_osc_probs
 
 N_AVOGADRO = 6.02214076e23
 
