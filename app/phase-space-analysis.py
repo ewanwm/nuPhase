@@ -4,6 +4,8 @@ from nuPhase.sample import Sample, SubSample, Parameters, Binning, NuFlavour, Nu
 from nuPhase.selection import SelectionNumu0Pi1P0N, SelectionNue0Pi0P
 from nuPhase.oscillator import OscillationCalculator
 
+from nuTens.tensor import Tensor
+
 import typing
 from argparse import ArgumentParser
 import sys
@@ -68,6 +70,7 @@ class PhaseSpaceAnalysis:
             self, 
             out_file_name: str, 
             nd_numu: Sample, fd_nue: Sample, 
+            oscillator: OscillationCalculator,
             nd_nue: Sample = None, fd_numu: Sample = None
         ):
             
@@ -87,6 +90,8 @@ class PhaseSpaceAnalysis:
         self.fd_numu = fd_numu
         self.fd_nue = fd_nue
 
+        self.oscillator: OscillationCalculator = oscillator
+
     def run(self):
 
         self.make_flux_plots(self.nd_numu)
@@ -95,8 +100,8 @@ class PhaseSpaceAnalysis:
         self.make_1d_rate_plots(self.nd_numu, cumulative=True, fill=True)
         self.make_1d_rate_plots(self.fd_nue, cumulative=True, fill=True)
 
-        nd_numu_total = self.nd_numu.get_event_rates(cut = lambda event: event.mode == 1)
-        fd_nue_total = self.fd_nue.get_event_rates(cut = lambda event: event.mode == 1)
+        nd_numu_total = self.nd_numu.get_event_rates()
+        fd_nue_total = self.fd_nue.get_event_rates()
 
         ## locations where expected n of events is at least 1
         nd_numu_total *= nd_numu_total > 1.0
@@ -115,11 +120,14 @@ class PhaseSpaceAnalysis:
         self.fd_nue.imshow(ax, data_override=fd_nue_total)
         self._pdf.savefig(fig)
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(5, 5))
 
         self.fd_nue.imshow(ax, data_override=self.get_unconstrained())
         ax.set_title("Unconstrained FD nue")
         self._pdf.savefig(fig)
+
+        self.get_gradients(sample=self.fd_nue, binning=Binning(["Enu_true"], bins = [flux_bins]))
+        self.get_gradients(sample=self.fd_nue)
 
         #fig, ax = plt.subplots()
         #ax.contour(np.meshgrid(), nd_numu, label = "ND numu")
@@ -134,7 +142,7 @@ class PhaseSpaceAnalysis:
         nd_numu = self.nd_numu.get_event_rates()
         fd_nue = self.fd_nue.get_event_rates()
 
-        fd_nue[(nd_numu >= 1) | (fd_nue < 1)] = 0
+        fd_nue[(nd_numu >= 1)] = 0
 
         return fd_nue
 
@@ -167,6 +175,118 @@ class PhaseSpaceAnalysis:
         plt.title(f"{sample.name} Flux")
         plt.ylabel(f"Flux [1.0 / cm^2 / 50 MeV / {sample.parameters.pot:.2E} POT]")
         self._pdf.savefig(fig)
+
+    def get_gradients(self, sample: Sample, binning: Binning = None) -> None:
+
+        if binning is None:
+            binning = sample.binning
+            
+        ## calculate the osc probs
+        sample.oscillate_events(progress_bar = True)
+
+        bin_contents = None
+        if binning.n_dims == 1:
+            bin_contents = [Tensor.zeros([1]).requires_grad(True) for _ in range(binning.n_bins[0] + 1)]
+        
+        elif binning.n_dims == 2:
+            bin_contents = [[Tensor.zeros([1]).requires_grad(True) for j in range(binning.n_bins[1] + 1)] for i in range(binning.n_bins[0] + 1)]
+            
+        gradients = {}
+        for osc_par in self.oscillator.parameters.keys():
+            gradients[osc_par] = np.zeros(binning.n_bins)
+            
+        for subsample in sample.subsamples:
+
+            for event in tqdm(subsample.events, desc="gettin' gradients"):
+                
+                u_var = event.get_var(binning.variables[0])
+                if u_var <= binning.bins[0][0] or u_var >= binning.bins[0][-1]:
+                    continue
+
+                u = np.digitize(u_var, binning.bins[0])
+                v = None
+
+                if binning.n_dims == 2:
+
+                    v_var = event.get_var(binning.variables[1])
+                    if v_var <= binning.bins[1][0] or v_var >= binning.bins[1][-1]:
+                        continue
+                    
+                    v = np.digitize(event.get_var(binning.variables[1]), binning.bins[1])
+
+                    bin_contents[u][v] = bin_contents[u][v] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
+
+                else:
+                    bin_contents[u] = bin_contents[u] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
+
+        for i_bin in range(1, binning.n_bins[0] + 1):
+
+            j_iterator = [-999]
+            if binning.n_dims == 2:
+                j_iterator = range(1, binning.n_bins[1] + 1)
+
+            for j_bin in j_iterator:
+
+                ## do the backward propagation to get gradient in terms of each osc parameter
+                if binning.n_dims == 1:
+                    if bin_contents[i_bin ].numpy()[0] == 0.0:
+                        continue
+
+                    bin_contents[i_bin].backward()
+
+                elif binning.n_dims == 2:
+                    if bin_contents[i_bin ][j_bin ].numpy()[0] == 0.0:
+                        continue
+
+                    bin_contents[i_bin ][j_bin ].backward()
+
+                ## fill the gradient histogram for each osc parameter
+                for osc_par_name, osc_par in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()): 
+                
+                    gradient = osc_par.grad().numpy()[0]
+
+                    if binning.n_dims == 1:
+                        gradients[osc_par_name][i_bin - 1] += gradient
+                    elif binning.n_dims == 2:
+                        gradients[osc_par_name][i_bin - 1][j_bin -1] += gradient
+
+                ## reset the accumulated gradients
+                self.oscillator.zero_grad()
+
+
+        for osc_par in self.oscillator.parameters.keys():
+            fig, ax = plt.subplots()
+            
+            event_rate = sample.get_event_rates(binning = binning)
+            data = gradients[osc_par]
+            data[event_rate <= 1.0] = 0.0
+            data = data / event_rate 
+
+            data[data == 0] = np.nan
+
+            if binning.n_dims == 2:
+                u_bins, v_bins = binning.bins
+
+                mappable = ax.imshow(data.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower")
+
+                ax.set_xlabel(binning.variables[0])
+                ax.set_ylabel(binning.variables[1])
+
+                cbar = plt.colorbar(mappable)
+                cbar.set_label(f"Gradient / Event")
+                
+            elif binning.n_dims == 1:
+
+                ax.stairs(data, binning.bins[0])
+                ax.set_xlabel(binning.variables[0])
+                ax.set_ylabel("Gradient / Event")
+
+            plt.title(f"{sample.name} {osc_par} gradients")
+
+            self._pdf.savefig(fig)
+            
+            fig.clear()
+
 
     def make_1d_rate_plots(self, sample: Sample, cumulative: bool = False, logy: bool = False, **stairs_args):
 
@@ -303,7 +423,7 @@ def main():
         oscillator = oscillator
     ).fill_from_file(file = NuisanceFile(args.fd_numu_nue, pre_selection="Mode==1"), progress_bar = True)
     
-    binning = Binning(("q3", "q0"), (80, 80), ranges = ((0.0, 4.0), (0.0, 4.0)))
+    binning = Binning(("q3", "q0"), (100, 100), ranges = ((0.0, 2.0), (0.0, 2.0)))
 
     nd_numu_sample = Sample(binning, [nd_numu_subsample], nd_parameters, name = "ND Numu")
     fd_nue_sample = Sample(binning, [fd_nue_nue_subsample, fd_numu_nue_subsample], fd_parameters, name = "FD nue")
@@ -313,7 +433,8 @@ def main():
     analysis = PhaseSpaceAnalysis(
         output_file + "-without-selections.pdf",
         nd_numu = nd_numu_sample,
-        fd_nue = fd_nue_sample
+        fd_nue = fd_nue_sample,
+        oscillator = oscillator
     )
 
     analysis.run()
@@ -328,6 +449,7 @@ def main():
             SelectionNue0Pi0P(electron_threshold = 0.2, pion_threshold = 0.212, proton_threshold = 1.41),
             progress_bar = True
         ),
+        oscillator = oscillator
     )
 
     analysis.run()
