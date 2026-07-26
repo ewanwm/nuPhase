@@ -442,7 +442,7 @@ def main():
     analysis = PhaseSpaceAnalysis(
         output_file + "-with-selections.pdf",
         nd_numu = nd_numu_sample.apply_selection(
-            SelectionNumu0Pi1P0N(muon_threshold = 0.2, pion_threshold = 0.1, proton_threshold = 0.1, neutron_threshold = 0.025),
+            SelectionNumu0Pi1P0N(muon_threshold = 0.2, pion_threshold = 0.1, proton_threshold = 0.35, neutron_threshold = 0.025),
             progress_bar = True
         ),
         fd_nue = fd_nue_sample.apply_selection(
