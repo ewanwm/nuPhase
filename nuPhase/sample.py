@@ -5,6 +5,8 @@ import uproot
 from matplotlib import pyplot as plt
 import numpy as np
 
+from nuTens.tensor import tensor, Tensor
+
 from nuPhase.utils import Molecule
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event, Particle
@@ -157,7 +159,7 @@ class SubSample:
         ## recover the flux that was used to generate the events
         self.fixed_flux_weight = None
 
-    def _get_event_info(self, file: NuisanceFile, aux_vars: typing.List[str], progress_bar: bool) -> None:
+    def _get_event_info(self, file: NuisanceFile, aux_vars: typing.List[str], progress_bar: bool, max_n_events: int = None) -> None:
         """read event info from input file and turn it into an array of events
         """
 
@@ -179,9 +181,13 @@ class SubSample:
             file.get_array(aux_var) for aux_var in aux_vars
         ]
 
-        iterable = range(n_particle_array.shape[0])
+        n_events_to_read = n_particle_array.shape[0]
+        if max_n_events is not None:
+            n_events_to_read = min(max_n_events, n_events_to_read)
+
+        iterable = range(n_events_to_read)
         if progress_bar:
-            iterable = tqdm(range(n_particle_array.shape[0]), desc = f"Reading events for subsample {self.label}")
+            iterable = tqdm(range(n_events_to_read), desc = f"Reading events for subsample {self.label}")
 
         for i_event in iterable:
 
@@ -217,11 +223,11 @@ class SubSample:
 
         return new_subsample
     
-    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3"], progress_bar: bool = False) -> 'SubSample':
+    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
         """Fill this subsample with events read in from a nuisance flat tree
         """
 
-        self._get_event_info(file, auxilary_variables, progress_bar=progress_bar)
+        self._get_event_info(file, auxilary_variables, progress_bar=progress_bar, max_n_events=max_n_events)
 
         self.flux_hist = file.flux_hist.to_numpy()
         
@@ -241,7 +247,7 @@ class SubSample:
         ret = None
 
         if bin_width_normalised:
-            ret = (counts * bin_widths / 0.005).sum()
+            ret = (counts * bin_widths / 0.05).sum()
 
         else:
             ret = counts.sum()
@@ -304,6 +310,47 @@ class SubSample:
 
         return new_subsample
     
+    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False) -> None:
+        """Calculate oscillations for each event and fill auxilary variable "osc_weight" with tensor containing oscillation weight
+
+        If there is no oscillator for this subsample then the oscillation weight will just be 1
+
+        TODO: add option to also save the gradients for each osc parameter, maybe also second derivatives, fisher info etc.
+        """
+
+        if self.oscillator is None:
+
+            for event in self.events:
+                event.aux_vars["osc_weight"] = tensor.ones([1])
+
+            return
+        
+        energies = self.get_array("Enu_true")
+        osc_probs = self.oscillator.calculate_osc_probs(energies)
+        osc_weights = osc_probs.get_values(["...", self.initial_flavour, self.final_flavour])
+
+        iterator = self.events
+        if progress_bar:
+            iterator = tqdm(self.events, desc="oscillatin' events")
+        
+        for i_event, event in enumerate(iterator):
+
+            event_weight = osc_weights.get_values([i_event])
+
+            event.aux_vars["osc_weight"] = event_weight
+
+            if save_gradients:
+
+                event_weight.backward()
+
+                for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+
+                    parameter_grad = parameter.grad().numpy()[0]
+
+                    event.aux_vars[f"osc_weight_{par_name}_grad"] = parameter_grad
+
+                self.oscillator.zero_grad()
+
     def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None):
 
         v1 = self.get_array(binning.variables[0], cut)
@@ -346,7 +393,7 @@ class Sample:
         assert binning.n_dims <= 2, "only support 2d samples!!"
 
         self.name = name
-        self.n_dins = binning.n_dims
+        self.n_dims = binning.n_dims
         self.binning = binning
         self.subsamples = subsamples
         self.parameters = parameters
@@ -354,6 +401,15 @@ class Sample:
         self.events = []
         for subsample in self.subsamples:
             self.events += subsample.events
+
+    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False) -> None:
+        """Calculate oscillations for each subsample
+
+        Just calls SubSample.oscillate_events() on each subsample
+        """
+
+        for subsample in self.subsamples:
+            subsample.oscillate_events(progress_bar=progress_bar, save_gradients=save_gradients)
 
     def apply_selection(self, selection: SelectionBase, progress_bar: bool = False) -> 'Sample':
 
@@ -373,11 +429,14 @@ class Sample:
         return new_sample
 
     
-    def imshow(self, axis, data_override: np.array, *imshow_args):
+    def imshow(self, axis, data_override: np.array, binning: Binning = None, *imshow_args):
         
-        assert self.n_dins == 2, "need 2 dims for imshowing!!!"
+        if binning is None:
+            binning = self.binning
 
-        u_bins, v_bins = self.binning.bins
+        assert binning.n_dims == 2, "need 2 dims for imshowing!!!"
+
+        u_bins, v_bins = binning.bins
 
         dat = data_override
 
