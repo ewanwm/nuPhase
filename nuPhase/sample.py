@@ -476,3 +476,32 @@ class Sample:
 
         return hist_total
     
+    def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
+        """Get an array of event level variables for each event in this SubSample
+        
+        returns an array containing values for each event filled with the specified variable.
+        Can specify a cut which should be a function that takes an event as input and returns true or false.
+        """
+
+        values = []
+        for event in self.events:
+
+            if cut is None or cut(event):
+                values.append(event.get_var(key))
+
+        return np.array(values)
+
+    def to_file(self, file_name:str) -> None:
+
+        with open(file_name, "wb") as file:
+
+            pickler = pickle.Pickler(file)
+            pickler.dump(self)
+
+    @staticmethod
+    def from_file(file_name: str) -> 'Sample':
+
+        with open(file_name, "rb") as file:
+
+            unpickler = pickle.Unpickler(file)
+            return unpickler.load()
