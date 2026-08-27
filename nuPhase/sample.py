@@ -54,7 +54,6 @@ class Binning:
             self.bins = bins
             self.n_bins = [b.shape[0] - 1 for b in bins]
             self.ranges = [(b[0], b[-1]) for b in bins]
-        
 
     def __eq__(self, other):
 
@@ -73,7 +72,58 @@ class Binning:
                 return False
             
         return True
+
+    def digitize(self, values: typing.Union[typing.List[float], float]) -> typing.List[int]:
+
+        _values = values
+        n_values = None
+
+        if type(_values) in [list, tuple]:
+            assert len(_values) == self.n_dims
+            n_values = len(_values)
+        elif type(_values) == np.array:
+            assert len(_values.shape) == 1
+            n_values = self.n_dims
+        elif type(_values) == float:
+            assert self.n_dims == 1
+            _values = [_values]
+            n_values = 1
+
+        bin_indices = []
+
+        for i_val in range(n_values):
+
+            bin_indices.append(np.digitize(_values[i_val], self.bins[i_val]))
+
+        return bin_indices
+
+    def get_bin_edges(self, variable: str = None):
+
+        if variable is None:
+            return self.bins
+
+        else:
+            i_var = self.variables.index(variable)
+            return self.bins[i_var]
+
+    def get_n_bins(self, variable: str = None):
+
+        if variable is None:
+            return self.n_bins
+
+        else:
+            i_var = self.variables.index(variable)
+            return self.n_bins[i_var]
         
+    def get_range(self, variable: str = None):
+
+        if variable is None:
+            return self.ranges
+
+        else:
+            i_var = self.variables.index(variable)
+            return self.ranges[i_var]
+
 class Parameters:
 
     def __init__(
