@@ -20,7 +20,7 @@ class OscillationCalculator:
             "theta13":None,
             "deltacp":None,
             "dmsq21": None,
-            "dmsq31": None
+            "dmsq32": None
         }
 
         if initialisation == "zeros":
@@ -29,7 +29,7 @@ class OscillationCalculator:
             self.parameters["theta13"] = Tensor.zeros([1, 1]).requires_grad(True)
             self.parameters["deltacp"] = Tensor.zeros([1, 1]).requires_grad(True)
             self.parameters["dmsq21"]  = Tensor.zeros([1, 1]).requires_grad(True)
-            self.parameters["dmsq31"]  = Tensor.zeros([1, 1]).requires_grad(True)
+            self.parameters["dmsq32"]  = Tensor.zeros([1, 1]).requires_grad(True)
 
         elif initialisation == "pdg":
             self.parameters["theta12"] = Tensor([33.41 * m.pi / 180.0], requires_grad=True)
@@ -37,7 +37,7 @@ class OscillationCalculator:
             self.parameters["theta13"] = Tensor([8.54  * m.pi / 180.0], requires_grad=True)
             self.parameters["deltacp"] = Tensor([197.0 * m.pi / 180.0], requires_grad=True)
             self.parameters["dmsq21"]  = Tensor([7.41e-5  * units.eV * units.eV], requires_grad=True)
-            self.parameters["dmsq31"]  = Tensor([(2.437e-3 + 7.41e-5) * units.eV * units.eV], requires_grad=True)
+            self.parameters["dmsq32"]  = Tensor([2.437e-3 * units.eV * units.eV], requires_grad=True)
 
         else:
             raise ValueError(f"Invalid initialisation option: {initialisation}")
@@ -49,7 +49,7 @@ class OscillationCalculator:
         self.propagator.set_theta13(self.parameters["theta13"])
         self.propagator.set_deltacp(self.parameters["deltacp"])
         self.propagator.set_dmsq21( self.parameters["dmsq21"] )
-        self.propagator.set_dmsq31( self.parameters["dmsq31"] )
+        self.propagator.set_dmsq31( self.parameters["dmsq32"] + self.parameters["dmsq21"] )
 
     def zero_grad(self):
         """Zero out the gradient of all of the parameters
