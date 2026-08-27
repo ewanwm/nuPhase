@@ -9,7 +9,7 @@ import numpy as np
 from nuTens.tensor import tensor, Tensor
 from nuTens.autograd import grad
 
-from nuPhase.utils import Molecule
+from nuPhase.materials import Molecule
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event, Particle
 from nuPhase.selection import SelectionBase
@@ -274,7 +274,7 @@ class SubSample:
 
         return new_subsample
     
-    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
+    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3", "ELep", "CosLep"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
         """Fill this subsample with events read in from a nuisance flat tree
         """
 
@@ -495,7 +495,7 @@ class Sample:
 
         dat = data_override
 
-        mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", *imshow_args)
+        mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", aspect="same", *imshow_args)
 
         cbar = plt.colorbar(mappable)
         if z_label is None:

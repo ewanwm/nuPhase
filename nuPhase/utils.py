@@ -1,21 +1,9 @@
-from matplotlib import pyplot as plt
 
-N_AVOGADRO = 6.02214076e23
+def strip_file_extension(file_name: str, extension: str) -> str:
 
-class Molecule:
+    out_file = str(file_name)
 
-    def __init__(self, n_nucleons: int, molar_mass: float):
+    if out_file.split(".")[-1] == extension:
+        out_file = ".".join(out_file.split(".")[:-1])
 
-        self.n_nucleons = n_nucleons
-        self.molar_mass = molar_mass
-
-    def get_n_nucleons(self, mass: float = None):
-
-        if mass is None:
-            return self.n_nucleons
-        
-        return mass * N_AVOGADRO / self.molar_mass
-
-carbon = Molecule(12, 12e-3)
-
-oxygen = Molecule(16, 16e-3)
+    return out_file
