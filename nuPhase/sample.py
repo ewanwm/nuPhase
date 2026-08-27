@@ -351,32 +351,37 @@ class SubSample:
 
                 self.oscillator.zero_grad()
 
-    def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None):
+    def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None, weight_var: str = None):
 
-        v1 = self.get_array(binning.variables[0], cut)
+        data_list = []
 
-        v2 = None
-        if len(binning.variables) == 2:
-            v2 = self.get_array(binning.variables[1], cut)
+        ## keep track of num of events passing the cut
+        n_events = 0
+
+        for iVar in range(binning.n_dims):
+            array = self.get_array(binning.variables[iVar], cut)
+
+            data_list.append(array)
+
+            if iVar == 0:
+                n_events = array.shape[0]
 
         ## caclulate oscillation weights if needed
-        osc_weights = np.ones(v1.shape)
+        osc_weights = np.ones(n_events)
         if self.oscillator is not None:
             energies = self.get_array("Enu_true", cut)
             osc_probs = self.oscillator.calculate_osc_probs(energies)
             osc_weights = osc_probs.numpy()[:, self.initial_flavour, self.final_flavour]
 
-        ## now make the histogram
-        hist = None
-        if binning.n_dims == 1:
-            hist, _ = np.histogram(v1, bins=binning.bins[0], weights=osc_weights)
-
-        elif binning.n_dims == 2:
-            v2 = self.get_array(binning.variables[1], cut)
-            hist, _, _ = np.histogram2d(v1, v2, bins=binning.bins, weights=osc_weights)
-
+        ## if weight variable specified make weight array
+        weight_array = None
+        if weight_var is not None:
+            weight_array = self.get_array(weight_var, cut=cut)
         else:
-            raise NotImplementedError('can only do 1 or 2 variables for now :(')
+            weight_array = np.ones(n_events)
+
+        ## now make the histogram
+        hist, _ = np.histogramdd(data_list, bins = binning.bins, weights = osc_weights * weight_array)
 
         return hist * self.get_event_scaling(target_mass, pot)
 
@@ -454,7 +459,8 @@ class Sample:
             self,
             binning: Binning = None,
             keep_zero = True,
-            cut: typing.Callable = None
+            cut: typing.Callable = None,
+            weight_var: str = None
         ):
 
         if binning is None:
@@ -468,7 +474,8 @@ class Sample:
                 binning, 
                 target_mass=self.parameters.target_mass, 
                 pot = self.parameters.pot, 
-                cut=cut
+                cut = cut,
+                weight_var = weight_var
             )
 
         if not keep_zero:
