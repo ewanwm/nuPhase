@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from nuTens.tensor import tensor, Tensor
+from nuTens.autograd import grad
 
 from nuPhase.utils import Molecule
 from nuPhase.oscillator import OscillationCalculator
@@ -356,7 +357,7 @@ class SubSample:
 
         return new_subsample
     
-    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False) -> None:
+    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False, second_deriv: bool = False) -> None:
         """Calculate oscillations for each event and fill auxilary variable "osc_weight" with tensor containing oscillation weight
 
         If there is no oscillator for this subsample then the oscillation weight will just be 1
@@ -387,13 +388,18 @@ class SubSample:
 
             if save_gradients:
 
-                event_weight.backward()
-
                 for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
 
-                    parameter_grad = parameter.grad().numpy()[0]
+                    parameter_grad_tensor = grad(event_weight, parameter)
+                    parameter_grad = parameter_grad_tensor.numpy()[0]
 
                     event.aux_vars[f"osc_weight_{par_name}_grad"] = parameter_grad
+
+                    if second_deriv:
+
+                        parameter_second_deriv = grad(parameter_grad_tensor, parameter)
+
+                        event.aux_vars[f"osc_weight_{par_name}_second_grad"] = parameter_second_deriv
 
                 self.oscillator.zero_grad()
 
