@@ -205,9 +205,8 @@ class SubSample:
         ## recover the cross section that was used to generate the events
         self.fixed_xsec_weight = None
 
-        ## The weight that should be applied to events in this sample to 
-        ## recover the flux that was used to generate the events
-        self.fixed_flux_weight = None
+        ## The integrated flux for this subsample
+        self.integrated_flux = None
 
     def _get_event_info(self, file: NuisanceFile, aux_vars: typing.List[str], progress_bar: bool, max_n_events: int = None) -> None:
         """read event info from input file and turn it into an array of events
@@ -267,7 +266,7 @@ class SubSample:
         )
 
         new_subsample.flux_hist         = self.flux_hist
-        new_subsample.fixed_flux_weight = self.fixed_flux_weight
+        new_subsample.integrated_flux   = self.integrated_flux
         new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
         new_subsample.oscillator        = self.oscillator
 
@@ -281,8 +280,8 @@ class SubSample:
 
         self.flux_hist = file.flux_hist.to_numpy()
         
-        self.fixed_xsec_weight = file.scale_factor * file.num_entries
-        self.fixed_flux_weight = self.get_integrated_flux() / file.num_entries
+        self.fixed_xsec_weight = file.scale_factor
+        self.integrated_flux   = self.get_integrated_flux()
 
         return self
 
@@ -291,13 +290,13 @@ class SubSample:
 
         assert self.flux_hist is not None, "hmmmm, flux hist is None. Has this subsample been initialised properly????"
 
-        counts, bin_edges = self.flux_hist
-        bin_widths = bin_edges[1:] - bin_edges[:-1]
+        counts, bin_edges = self.flux_hist ## counts are in units of [1 / (cm^2 * 50 MeV * 10^21 POT)]
+        bin_widths = ( bin_edges[1:] - bin_edges[:-1] ) / 0.05 ## bin widths "in units of [50MeV]"
 
         ret = None
 
         if bin_width_normalised:
-            ret = (counts * bin_widths / 0.05).sum()
+            ret = (counts * bin_widths).sum() ## flux in units of [1 / (cm^2 * 10^21 POT)]
 
         else:
             ret = counts.sum()
@@ -311,10 +310,6 @@ class SubSample:
     def get_pot_weight(self, pot: float) -> float:
 
         return pot / self.base_pot
-    
-    def get_flux_weight(self):
-        
-        return self.fixed_flux_weight
 
     def get_event_scaling(self, target_mass: float, pot: float) -> float:
         """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT
@@ -323,7 +318,7 @@ class SubSample:
         n_nucleons = self.target_material.get_n_nucleons(target_mass)
         pot_weight = self.get_pot_weight(pot)
         
-        return self.fixed_flux_weight * self.fixed_xsec_weight * n_nucleons * pot_weight
+        return self.integrated_flux * self.fixed_xsec_weight * n_nucleons * pot_weight
 
     def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
         """Get an array of event level variables for each event in this SubSample
@@ -444,8 +439,6 @@ class Sample:
         parameters: Parameters,
         name: str
     ):
-        
-        assert binning.n_dims <= 2, "only support 2d samples!!"
 
         self.name = name
         self.n_dims = binning.n_dims
