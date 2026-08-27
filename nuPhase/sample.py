@@ -345,7 +345,7 @@ class SubSample:
 
         iterator = self.events
         if progress_bar:
-            iterator = tqdm(self.events, desc = f"applying {selection.name} to {self.label}")
+            iterator = tqdm(self.events, desc = f"applying [{selection.name}] to {self.label}")
         
         for event in iterator:
 
@@ -446,7 +446,7 @@ class Sample:
         self.subsamples = subsamples
         self.parameters = parameters
         
-        self.events = []
+        self.events: typing.List[Event] = []
         for subsample in self.subsamples:
             self.events += subsample.events
 
