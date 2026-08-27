@@ -478,7 +478,7 @@ class Sample:
         return new_sample
 
     
-    def imshow(self, axis, data_override: np.array, binning: Binning = None, *imshow_args):
+    def imshow(self, axis, data_override: np.array, binning: Binning = None, z_label: str = None, *imshow_args):
         
         if binning is None:
             binning = self.binning
@@ -492,8 +492,11 @@ class Sample:
         mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", *imshow_args)
 
         cbar = plt.colorbar(mappable)
-        cbar.set_label(f"N Events / {self.parameters.pot:.2E} POT / {self.parameters.target_mass:.2E} kg")
-        
+        if z_label is None:
+            cbar.set_label(f"N Events / {self.parameters.pot:.2E} POT / {self.parameters.target_mass:.2E} kg")
+        else:
+            cbar.set_label(z_label)
+                
         axis.set_title(f"{self.name}")
 
         plt.xlabel(self.binning.variables[0])
