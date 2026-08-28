@@ -1,6 +1,7 @@
 import typing
 from enum import IntEnum
 import pickle
+from collections.abc import Iterable
 
 import uproot
 from matplotlib import pyplot as plt
@@ -125,6 +126,35 @@ class Binning:
         else:
             i_var = self.variables.index(variable)
             return self.ranges[i_var]
+        
+    def project(self, variables: typing.Union[str, typing.Iterable[str]]) -> 'Binning':
+        """Create a projection of this binning onto the specified variables
+
+        :param variables: The variables to project into
+        :type variables: typing.union[str, typing.Iterable[str]]
+        :raises ValueError: If any of the variables are not contained in this binning
+        :return: Projected binning
+        :rtype: Binning
+        """
+
+        _variables = None
+
+        if type(variables) == str:
+
+            _variables = [variables]
+
+        if isinstance(variables, Iterable):
+
+            _variables = variables
+
+        ## check that all variables are actually in this binning
+        for var in _variables:
+            if var not in self.variables:
+                raise ValueError(f"Variable {var} not found in binning!")
+
+        ret = Binning(_variables, bins = [self.get_bin_edges(var) for var in _variables])
+
+        return ret
 
 class Parameters:
 
@@ -202,6 +232,7 @@ class SubSample:
         ## these should be filled later
         self.events: typing.List[Event] = []
         self._flux_hist: np.array       = None
+        self._flux_binning: np.array    = None
 
         ## The weight that should be applied to events in this sample to 
         ## recover the cross section that was used to generate the events
@@ -268,6 +299,7 @@ class SubSample:
         )
 
         new_subsample.flux_hist         = self.flux_hist
+        new_subsample.flux_binning      = self.flux_binning
         new_subsample.integrated_flux   = self.integrated_flux
         new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
         new_subsample.oscillator        = self.oscillator
@@ -281,6 +313,7 @@ class SubSample:
         self._get_event_info(file, auxilary_variables, progress_bar=progress_bar, max_n_events=max_n_events)
 
         self.flux_hist = file.flux_hist.to_numpy()
+        self.flux_binning = Binning(["Enu_true"], bins = [self.flux_hist[1]])
         
         self.fixed_xsec_weight = file.scale_factor
         self.integrated_flux   = self.get_integrated_flux()
@@ -495,7 +528,7 @@ class Sample:
 
         dat = data_override
 
-        mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", aspect="same", *imshow_args)
+        mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", aspect="auto", *imshow_args)
 
         cbar = plt.colorbar(mappable)
         if z_label is None:
