@@ -7,13 +7,13 @@ import uproot
 from matplotlib import pyplot as plt
 import numpy as np
 
-from nuTens.tensor import tensor, Tensor
+from nuTens.tensor import tensor
 from nuTens.autograd import grad
 
 from nuPhase.materials import Molecule
 from nuPhase.oscillator import OscillationCalculator
-from nuPhase.event import Event, Particle
-from nuPhase.selection import SelectionBase
+from nuPhase.event import Event
+from nuPhase.modules.selection import SelectionBase
 
 from tqdm import tqdm
 
