@@ -40,9 +40,20 @@ class UnconstrainableNueAnalysis:
 
     def run(self):
 
+        for sample in [self.nd_numu, self.nd_nue, self.fd_nue]:
+            if sample is not None:
+                
+                fig, ax = plt.subplots()
+
+                sample.imshow(ax, binning = self.interaction_space, data_override = sample.get_event_rates(binning = self.interaction_space))
+                ax.set_title(f"{sample.name}")
+                self._pdf.savefig(fig)
+
+                fig.clear()
+
         fig, ax = plt.subplots()
 
-        self.fd_nue.imshow(ax, data_override=self.get_unconstrained(nd_sample = self.nd_numu, fd_sample = self.fd_nue))
+        self.fd_nue.imshow(ax, binning = self.interaction_space, data_override = self.get_unconstrained(nd_sample = self.nd_numu, fd_sample = self.fd_nue))
         ax.set_title("FD nue Unconstrained by ND Numu")
         self._pdf.savefig(fig)
 
@@ -51,7 +62,7 @@ class UnconstrainableNueAnalysis:
         if self.nd_nue:
 
             ax = fig.subplots()
-            self.fd_nue.imshow(ax, data_override=self.get_unconstrained(nd_sample = self.nd_nue, fd_sample = self.fd_nue))
+            self.fd_nue.imshow(ax, binning = self.interaction_space, data_override = self.get_unconstrained(nd_sample = self.nd_nue, fd_sample = self.fd_nue))
 
             ax.set_title("FD nue Unconstrained by ND Nue")
             self._pdf.savefig(fig)
