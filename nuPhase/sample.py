@@ -538,8 +538,8 @@ class Sample:
                 
         axis.set_title(f"{self.name}")
 
-        plt.xlabel(self.binning.variables[0])
-        plt.ylabel(self.binning.variables[1])
+        plt.xlabel(binning.variables[0])
+        plt.ylabel(binning.variables[1])
 
     def get_event_rates(
             self,

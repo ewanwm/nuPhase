@@ -1,5 +1,4 @@
-from nuPhase.event import Event, Particle
-import numpy as np
+from nuPhase.event import Event
 
 import abc
 
