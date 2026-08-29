@@ -1,0 +1,78 @@
+
+[project]
+
+  name = "nuPhase"
+  
+  description="A tool to perform phase space analysis for long baseline neutrino oscillation experiments"
+
+  readme = "README.md"
+
+  authors = [
+    { name = "Ewan Miller", email = "e.w.miller@imperial.ac.uk" },
+  ]
+
+  requires-python = ">=3.9"
+
+  license = "GPL-3.0-or-later"
+
+  keywords = ["neutrino", "oscillation", "physics", "particle", "tensor", "experiment", "autograd", "differentiable programming"]
+
+  classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: GPU",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Intended Audience :: Science/Research"
+  ]
+
+  dependencies = [
+    "nuTens>=0.6",
+    "matplotlib",
+    "tqdm",
+    "uproot"
+  ]
+
+  dynamic = ["version"]
+
+
+[project.optional-dependencies]
+
+  docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-tabs",
+    "mypy",
+  ]
+
+  testing = [
+    "pytest"
+  ]
+
+
+[project.urls]
+  Repository = "https://github.com/ewanwm/nuPhase"
+  Issues = "https://github.com/ewanwm/nuPhase/issues"
+  Documentation = "https://ewanwm.github.io/nuPhase/"
+
+[build-system]
+
+    requires = ["setuptools"]
+    build-backend = "setuptools.build_meta"
+
+[project.scripts]
+
+  # nuPhase = "nuPhase:app.nuPhase.main"
+
+  phase-space-analysis = "nuPhase.app.phase_space_analysis:main"
+
+[tool.setuptools]
+
+  packages = ["nuPhase"]
