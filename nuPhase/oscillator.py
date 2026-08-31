@@ -23,6 +23,9 @@ class OscillationCalculator:
             "dmsq32": None
         }
 
+        self.density = density
+        self.baseline = baseline
+
         if initialisation == "zeros":
             self.parameters["theta12"] = Tensor.zeros([1, 1]).requires_grad(True)
             self.parameters["theta23"] = Tensor.zeros([1, 1]).requires_grad(True)
@@ -43,7 +46,24 @@ class OscillationCalculator:
             raise ValueError(f"Invalid initialisation option: {initialisation}")
 
         ## build the propagator
-        self.propagator = DPpropagator(10).set_baseline(baseline * units.km).set_antineutrino(False).set_density(density)
+        self.propagator = None
+        self._setup_propagator()
+
+    def __setstate__(self, state):
+
+        self.__dict__.update(state)
+
+        self._setup_propagator()
+
+    def __getstate__(self):
+
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['propagator']
+
+    def _setup_propagator(self):
+
+        self.propagator = DPpropagator(10).set_baseline(self.baseline * units.km).set_antineutrino(False).set_density(self.density)
         self.propagator.set_theta12(self.parameters["theta12"])
         self.propagator.set_theta23(self.parameters["theta23"])
         self.propagator.set_theta13(self.parameters["theta13"])
@@ -68,7 +88,7 @@ class OscillationCalculator:
 
         energies_tensor = None
         if type(energies) == np.ndarray:
-            energies_tensor = Tensor(energies)
+            energies_tensor = Tensor(energies, dtype=dtype.scalar_type.complex_float)
         elif type(energies) == Tensor:
             energies_tensor = energies
         else:

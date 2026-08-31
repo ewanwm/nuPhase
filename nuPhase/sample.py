@@ -7,7 +7,8 @@ import uproot
 from matplotlib import pyplot as plt
 import numpy as np
 
-from nuTens.tensor import tensor
+from nuTens import tensor
+from nuTens.tensor import Tensor
 from nuTens.autograd import grad
 
 from nuPhase.materials import Molecule
@@ -584,7 +585,24 @@ class Sample:
 
         return np.array(values)
 
-    def to_file(self, file_name:str) -> None:
+    def to_file(self, file_name: str, keep_tensors: bool = False) -> None:
+
+        ## strip out tensor objects by default - they really beef up file sizes
+        if not keep_tensors:
+
+            for event in self.events:
+
+                to_delete = []
+
+                for var_name, var in event.aux_vars.items():
+
+                    if type(var) == Tensor:
+                        
+                        to_delete.append(var_name)
+
+                for var_name in to_delete:
+
+                    del event.aux_vars[var_name]
 
         with open(file_name, "wb") as file:
 
