@@ -1,17 +1,15 @@
 
-from nuPhase.utils import carbon, oxygen, Molecule
+from nuPhase.utils import strip_file_extension
+from nuPhase.materials import carbon, oxygen, water
 from nuPhase.sample import Sample, SubSample, Parameters, Binning, NuFlavour, NuisanceFile
-from nuPhase.selection import SelectionNumu0Pi1P0N, SelectionNue0Pi0P
+from nuPhase.modules.selection import SelectionNumu0Pi1P0N, SelectionNue0Pi0P, SelectionNumu0Pi0P, SelectionNue0Pi1P0N
 from nuPhase.oscillator import OscillationCalculator
-
-from nuTens.tensor import Tensor
+from nuPhase.analysis import FisherInfoAnalysis, BasicAnalysis, UnconstrainableNueAnalysis
 
 import typing
 from argparse import ArgumentParser
 import sys
 
-from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib import pyplot as plt
 import numpy as np
 
 flux_bins = np.array([
@@ -27,357 +25,39 @@ flux_bins = np.array([
     3.8, 4, 4.5, 5, 6, 7, 8, 9, 10
 ])
 
-## Full mode list
-# modes = {
-#   "CCQE": [1],
-#   "CC1pipm": [11, 3],
-#   "CCcoh": [16],
-#   "CCMpi": [21],
-#   "CCDIS": [26],
-#   "NC1pi0": [31, 32],
-#   "NC1pipm": [33, 34],
-#   "NCcoh": [36],
-#   "NCoth": [42, 43, 44, 45, 51, 52, 35],
-#   "2p2h": [2],
-#   "NC1gam": [38, 39],
-#   "CCMisc": [15, 17, 22, 23],
-#   "NCMpi": [41],
-#   "NCDIS": [46],
-#   "CC1pi0": [12],
-# }
-
-modes = {
-  "CCQE": [1],
-  "2p2h": [2],
-  "CC1pipm": [11, 3],
-  "CCcoh": [16],
-  "CCMpi": [21],
-  "CCDIS": [26],
-  "NC1pi0": [31, 32],
-  "NC1pipm": [33, 34],
-  "NCcoh": [36],
-  "NCoth": [42, 43, 44, 45, 51, 52, 35],
-  "NC1gam": [38, 39],
-  "CCMisc": [15, 17, 22, 23],
-  "NCMpi": [41],
-  "NCDIS": [46],
-  "CC1pi0": [12]
-}
-
-class PhaseSpaceAnalysis:
-
-    def __init__(
-            self, 
-            out_file_name: str, 
-            nd_numu: Sample, fd_nue: Sample, 
-            oscillator: OscillationCalculator,
-            nd_nue: Sample = None, fd_numu: Sample = None
-        ):
-            
-        binning_check = nd_numu.binning == fd_nue.binning
-        if nd_nue is not None:
-            binning_check = binning_check and nd_numu.binning == nd_nue.binning
-        if fd_numu is not None:
-            binning_check = binning_check and nd_numu.binning == fd_nue.binning
-        
-        assert binning_check, "Binning must be the same for all samples!!"
-
-        self._pdf = PdfPages(out_file_name)
-        self._fig = plt.figure()
-
-        self.nd_numu = nd_numu
-        self.nd_nue = nd_nue
-        self.fd_numu = fd_numu
-        self.fd_nue = fd_nue
-
-        self.oscillator: OscillationCalculator = oscillator
-
-    def run(self):
-
-        self.make_flux_plots(self.nd_numu)
-        self.make_flux_plots(self.fd_nue)
-
-        self.make_1d_rate_plots(self.nd_numu, cumulative=True, fill=True)
-        self.make_1d_rate_plots(self.fd_nue, cumulative=True, fill=True)
-
-        nd_numu_total = self.nd_numu.get_event_rates()
-        fd_nue_total = self.fd_nue.get_event_rates()
-
-        ## locations where expected n of events is at least 1
-        nd_numu_total *= nd_numu_total > 1.0
-        fd_nue_total *= fd_nue_total > 1.0
-
-        nd_numu_total[nd_numu_total == 0] = np.nan
-        fd_nue_total[fd_nue_total == 0] = np.nan
-
-        fig, ax = plt.subplots()
-
-        self.nd_numu.imshow(ax, data_override=nd_numu_total)
-        self._pdf.savefig(fig)
-
-        fig, ax = plt.subplots()
-
-        self.fd_nue.imshow(ax, data_override=fd_nue_total)
-        self._pdf.savefig(fig)
-
-        fig, ax = plt.subplots(figsize=(5, 5))
-
-        self.fd_nue.imshow(ax, data_override=self.get_unconstrained())
-        ax.set_title("Unconstrained FD nue")
-        self._pdf.savefig(fig)
-
-        self.get_gradients(sample=self.fd_nue, binning=Binning(["Enu_true"], bins = [flux_bins]))
-        self.get_gradients(sample=self.fd_nue)
-
-        #fig, ax = plt.subplots()
-        #ax.contour(np.meshgrid(), nd_numu, label = "ND numu")
-        #ax.contour(fd_nue, label = "FD nue")
-        #plt.legend()
-        #self._pdf.savefig(fig)
-
-        self._pdf.close()
-
-    def get_unconstrained(self):
-
-        nd_numu = self.nd_numu.get_event_rates()
-        fd_nue = self.fd_nue.get_event_rates()
-
-        fd_nue[(nd_numu >= 1)] = 0
-
-        return fd_nue
-
-    def make_flux_plots(self, sample: Sample):
-
-        fig = plt.figure()
-
-        if sample.subsamples is not None:
-
-            for subsample in sample.subsamples:
-
-                enu = subsample.get_array("Enu_true")
-                ## make basic flux plot
-                plt.hist(
-                    enu, 
-                    bins=flux_bins, 
-                    weights=np.full(
-                        enu.shape, subsample.get_flux_weight() * subsample.get_pot_weight(sample.parameters.pot)), 
-                        histtype="step", 
-                        label=subsample.label
-                    )
-
-        else:
-            pass
-
-        
-        plt.yscale("log")
-        plt.legend()
-        plt.xlabel("neutrino energy [GeV]")
-        plt.title(f"{sample.name} Flux")
-        plt.ylabel(f"Flux [1.0 / cm^2 / 50 MeV / {sample.parameters.pot:.2E} POT]")
-        self._pdf.savefig(fig)
-
-    def get_gradients(self, sample: Sample, binning: Binning = None) -> None:
-
-        if binning is None:
-            binning = sample.binning
-            
-        ## calculate the osc probs
-        sample.oscillate_events(progress_bar = True)
-
-        bin_contents = None
-        if binning.n_dims == 1:
-            bin_contents = [Tensor.zeros([1]).requires_grad(True) for _ in range(binning.n_bins[0] + 1)]
-        
-        elif binning.n_dims == 2:
-            bin_contents = [[Tensor.zeros([1]).requires_grad(True) for j in range(binning.n_bins[1] + 1)] for i in range(binning.n_bins[0] + 1)]
-            
-        gradients = {}
-        for osc_par in self.oscillator.parameters.keys():
-            gradients[osc_par] = np.zeros(binning.n_bins)
-            
-        for subsample in sample.subsamples:
-
-            for event in tqdm(subsample.events, desc="gettin' gradients"):
-                
-                u_var = event.get_var(binning.variables[0])
-                if u_var <= binning.bins[0][0] or u_var >= binning.bins[0][-1]:
-                    continue
-
-                u = np.digitize(u_var, binning.bins[0])
-                v = None
-
-                if binning.n_dims == 2:
-
-                    v_var = event.get_var(binning.variables[1])
-                    if v_var <= binning.bins[1][0] or v_var >= binning.bins[1][-1]:
-                        continue
-                    
-                    v = np.digitize(event.get_var(binning.variables[1]), binning.bins[1])
-
-                    bin_contents[u][v] = bin_contents[u][v] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
-
-                else:
-                    bin_contents[u] = bin_contents[u] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
-
-        for i_bin in range(1, binning.n_bins[0] + 1):
-
-            j_iterator = [-999]
-            if binning.n_dims == 2:
-                j_iterator = range(1, binning.n_bins[1] + 1)
-
-            for j_bin in j_iterator:
-
-                ## do the backward propagation to get gradient in terms of each osc parameter
-                if binning.n_dims == 1:
-                    if bin_contents[i_bin ].numpy()[0] == 0.0:
-                        continue
-
-                    bin_contents[i_bin].backward()
-
-                elif binning.n_dims == 2:
-                    if bin_contents[i_bin ][j_bin ].numpy()[0] == 0.0:
-                        continue
-
-                    bin_contents[i_bin ][j_bin ].backward()
-
-                ## fill the gradient histogram for each osc parameter
-                for osc_par_name, osc_par in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()): 
-                
-                    gradient = osc_par.grad().numpy()[0]
-
-                    if binning.n_dims == 1:
-                        gradients[osc_par_name][i_bin - 1] += gradient
-                    elif binning.n_dims == 2:
-                        gradients[osc_par_name][i_bin - 1][j_bin -1] += gradient
-
-                ## reset the accumulated gradients
-                self.oscillator.zero_grad()
-
-
-        for osc_par in self.oscillator.parameters.keys():
-            fig, ax = plt.subplots()
-            
-            event_rate = sample.get_event_rates(binning = binning)
-            data = gradients[osc_par]
-            data[event_rate <= 1.0] = 0.0
-            data = data / event_rate 
-
-            data[data == 0] = np.nan
-
-            if binning.n_dims == 2:
-                u_bins, v_bins = binning.bins
-
-                mappable = ax.imshow(data.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower")
-
-                ax.set_xlabel(binning.variables[0])
-                ax.set_ylabel(binning.variables[1])
-
-                cbar = plt.colorbar(mappable)
-                cbar.set_label(f"Gradient / Event")
-                
-            elif binning.n_dims == 1:
-
-                ax.stairs(data, binning.bins[0])
-                ax.set_xlabel(binning.variables[0])
-                ax.set_ylabel("Gradient / Event")
-
-            plt.title(f"{sample.name} {osc_par} gradients")
-
-            self._pdf.savefig(fig)
-            
-            fig.clear()
-
-
-    def make_1d_rate_plots(self, sample: Sample, cumulative: bool = False, logy: bool = False, **stairs_args):
-
-        ## plot expected event rate as fn of neutrino energy
-        fig = plt.figure()
-
-        binning = Binning(["Enu_true"], bins = [flux_bins])
-        event_rate = sample.get_event_rates(binning=binning)
-        plt.stairs(event_rate, flux_bins, label="total")
-
-        event_rate[:] = 0.0
-        mode_event_rates = []
-
-        if cumulative: 
-            for mode, codes in zip(list(modes.keys())[::-1], list(modes.values())[::-1]):
-
-                event_rate += sample.get_event_rates(cut = lambda event: event.mode in codes, binning=binning)
-                mode_event_rates.append(np.copy(event_rate))
-            
-            for mode_event_rate, mode in zip(mode_event_rates[::-1], modes.keys()):
-
-                plt.stairs(mode_event_rate, flux_bins, label=mode, **stairs_args)
-
-        else:
-            for mode, codes in zip(list(modes.keys()), list(modes.values())):
-
-                plt.stairs(sample.get_event_rates(cut = lambda event: event.mode in codes, binning=binning), flux_bins, label=mode, **stairs_args)
-
-        if logy:
-            plt.yscale("log")
-    
-        plt.legend()
-        plt.xlabel("neutrino energy [GeV]")
-        plt.title(f"Event rate {sample.name}")
-        plt.ylabel(f"N Events / nucleon / {sample.parameters.pot:.2E} POT")
-        self._pdf.savefig(fig)
-        
-
 def setup_parser():
 
     parser = ArgumentParser("make-plots")
 
     parser.add_argument(
-        "--fd-nue-nue",
+        "--fd-nue",
         type=str,
-        help="FD nue -> nue filename",
+        help="FD nue sample",
         required=True
     )
     parser.add_argument(
-        "--fd-numu-nue",
+        "--fd-numu",
         type=str,
-        help="numu -> nue filename",
+        help="FD numu sample",
         required=True
     )
     parser.add_argument(
         "--nd-numu",
         type=str,
-        help="numu filename",
+        help="ND numu sample",
         required=True
+    )
+    parser.add_argument(
+        "--nd-nue",
+        type=str,
+        help="ND nue sample",
+        required=False
     )
     parser.add_argument(
         "-o", "--output",
         type=str,
         help="name of output file",
         required=True
-    )
-    parser.add_argument(
-        "--nd-mass",
-        type=float,
-        help="The mass of the near detector",
-        required=True
-    )
-    parser.add_argument(
-        "--fd-mass",
-        type=float,
-        help="The mass of the far detector",
-        required=True
-    )
-    parser.add_argument(
-        "--detector-material",
-        type=str,
-        help="The material of the test detector",
-        choices=["oxygen", "carbon"],
-        required=True
-    )
-    parser.add_argument(
-        "--pot",
-        type=float,
-        help="The desired POT",
-        default=1e21,
-        required=False
     )
 
     return parser
@@ -389,69 +69,51 @@ def main():
     ## parse args 
     args = parser.parse_args(sys.argv[1:])
 
-    target_material = {"oxygen": oxygen, "carbon": carbon}[args.detector_material]
-    output_file: str = args.output
-    if output_file.split(".")[-1] == "pdf":
-        output_file = ".".join(output_file.split(".")[:-1])
+    output_file: str = strip_file_extension(args.output, "pdf")
 
-    nd_parameters = Parameters(args.pot, target_material, args.nd_mass)
-    fd_parameters = Parameters(args.pot, target_material, args.fd_mass)
+    nd_numu_sample = Sample.from_file(args.nd_numu)
+    nd_nue_sample  = Sample.from_file(args.nd_nue)
 
-    ## create subsamples for each detector
-    nd_numu_subsample = SubSample(
-        label = "nd numu", 
-        initial_flavour = NuFlavour.muon, 
-        final_flavour = NuFlavour.muon, 
-        target_material = target_material
-    ).fill_from_file(file = NuisanceFile(args.nd_numu, pre_selection="Mode==1"), progress_bar = True)
+    fd_nue_sample  = Sample.from_file(args.fd_nue)
+    fd_numu_sample = Sample.from_file(args.fd_numu)
 
     oscillator = OscillationCalculator(295.0, initialisation="pdg")
-    
-    fd_nue_nue_subsample = SubSample(
-        label = "fd nue -> nue ",
-        initial_flavour = NuFlavour.electron, 
-        final_flavour = NuFlavour.electron, 
-        target_material = target_material,
-        oscillator = oscillator
-    ).fill_from_file(file = NuisanceFile(args.fd_nue_nue, pre_selection="Mode==1"), progress_bar = True)
 
-    fd_numu_nue_subsample = SubSample(
-        label = "fd numu -> nue ",
-        initial_flavour = NuFlavour.muon, 
-        final_flavour = NuFlavour.electron, 
-        target_material = target_material,
-        oscillator = oscillator
-    ).fill_from_file(file = NuisanceFile(args.fd_numu_nue, pre_selection="Mode==1"), progress_bar = True)
-    
-    binning = Binning(("q3", "q0"), (100, 100), ranges = ((0.0, 2.0), (0.0, 2.0)))
+    for subsample in fd_nue_sample.subsamples:
+        subsample.oscillator = oscillator
+    for subsample in fd_numu_sample.subsamples:
+            subsample.oscillator = oscillator
 
-    nd_numu_sample = Sample(binning, [nd_numu_subsample], nd_parameters, name = "ND Numu")
-    fd_nue_sample = Sample(binning, [fd_nue_nue_subsample, fd_numu_nue_subsample], fd_parameters, name = "FD nue")
+    BasicAnalysis(
+        output_file + "-basic-plots-with-selections.pdf",
+        samples = [
+            nd_numu_sample,
+            nd_nue_sample,
+            fd_nue_sample,
+            fd_numu_sample
+        ]
+    ).run()
 
-    ## first do the analysis with no selections applied
-
-    analysis = PhaseSpaceAnalysis(
-        output_file + "-without-selections.pdf",
+    UnconstrainableNueAnalysis(
+        output_file + "-unconstrainable-nue.pdf",
         nd_numu = nd_numu_sample,
-        fd_nue = fd_nue_sample,
+        nd_nue  = nd_nue_sample,
+        fd_nue  = fd_nue_sample,
+        interaction_space = Binning(["q3", "q0"], bins = [np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)])
+    ).run()
+    
+    analysis = FisherInfoAnalysis(
+        output_file + "-fisher-analysis-with-selections.pdf",
+        nd_numu = nd_numu_sample,
+        nd_nue  = nd_nue_sample,
+        fd_nue  = fd_nue_sample,
+        fd_numu = fd_numu_sample,
+        interaction_space = Binning(["Enu_true", "q3", "q0"], bins = [flux_bins, np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)]),
         oscillator = oscillator
     )
 
-    analysis.run()
-
-    analysis = PhaseSpaceAnalysis(
-        output_file + "-with-selections.pdf",
-        nd_numu = nd_numu_sample.apply_selection(
-            SelectionNumu0Pi1P0N(muon_threshold = 0.2, pion_threshold = 0.1, proton_threshold = 0.35, neutron_threshold = 0.025),
-            progress_bar = True
-        ),
-        fd_nue = fd_nue_sample.apply_selection(
-            SelectionNue0Pi0P(electron_threshold = 0.2, pion_threshold = 0.212, proton_threshold = 1.41),
-            progress_bar = True
-        ),
-        oscillator = oscillator
-    )
-
+    analysis.plot_fisher_info_map(variables=["q3", "q0"], slice_var="Enu_true")
+    analysis.plot_fisher_info_map(variables=["q3", "q0"], slice_var="Enu_true", avg_per_event=True)
     analysis.run()
 
 if __name__ == "__main__":

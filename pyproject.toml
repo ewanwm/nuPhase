@@ -72,6 +72,7 @@
   # nuPhase = "nuPhase:app.nuPhase.main"
 
   phase-space-analysis = "nuPhase.app.phase_space_analysis:main"
+  prepare-samples = "nuPhase.app.prepare_samples:main"
 
 [tool.setuptools]
 
