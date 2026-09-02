@@ -529,7 +529,7 @@ class Sample:
 
         dat = data_override
 
-        mappable = axis.imshow(dat.T, extent=(u_bins[0], u_bins[-1], v_bins[0], v_bins[-1]), origin="lower", aspect="auto", *imshow_args)
+        mappable = axis.pcolormesh(binning.bins[0], binning.bins[1], dat.T, *imshow_args)
 
         cbar = plt.colorbar(mappable)
         if z_label is None:
