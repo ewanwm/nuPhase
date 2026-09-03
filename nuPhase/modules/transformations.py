@@ -111,77 +111,37 @@ class CalculateFisherInfo:
             binning = sample.binning
             
         ## calculate the osc probs
-        sample.oscillate_events(progress_bar = True)
+        sample.oscillate_events(progress_bar = True, save_gradients = True)
 
-        bin_contents = None
-        if binning.n_dims == 1:
-            bin_contents = [Tensor.zeros([1]).requires_grad(True) for _ in range(binning.n_bins[0] + 1)]
-        
-        elif binning.n_dims == 2:
-            bin_contents = [[Tensor.zeros([1]).requires_grad(True) for j in range(binning.n_bins[1] + 1)] for i in range(binning.n_bins[0] + 1)]
-            
+        if self.make_plots:
+            for subsample in sample.subsamples:
+
+                fig = plt.figure()
+                fig.clear()
+
+                plt.stairs(subsample.binned_osc_probs, subsample.osc_energy_binning)
+                plt.title(f"{subsample.label} Binned Oscillations")
+                plt.xlabel("Enu [GeV]")
+
+                self._pdf.savefig(fig)
+                    
+                for par_name in self.oscillator.parameters.keys():
+
+                    fig.clear()
+                    plt.stairs(subsample.binned_gradients[par_name], subsample.osc_energy_binning)
+                    plt.title(f"{subsample.label} Binned {par_name} Gradients")
+                    plt.xlabel("Enu [GeV]")
+
+                    self._pdf.savefig(fig)
+
         gradients = {}
         fisher_informations = {}
+
         for osc_par in self.oscillator.parameters.keys():
-            gradients[osc_par] = np.zeros(binning.n_bins)
-            fisher_informations[osc_par] = np.zeros(binning.n_bins)
-            
-        for subsample in sample.subsamples:
 
-            for event in tqdm(subsample.events, desc="gettin' bin contents"):
-                
-                u_var = event.get_var(binning.variables[0])
-                if u_var <= binning.bins[0][0] or u_var >= binning.bins[0][-1]:
-                    continue
+            gradients[osc_par] = sample.get_event_rates(weight_var = f"osc_weight_{osc_par}_grad")
 
-                u = np.digitize(u_var, binning.bins[0])
-                v = None
-
-                if binning.n_dims == 2:
-
-                    v_var = event.get_var(binning.variables[1])
-                    if v_var <= binning.bins[1][0] or v_var >= binning.bins[1][-1]:
-                        continue
-                    
-                    v = np.digitize(event.get_var(binning.variables[1]), binning.bins[1])
-
-                    bin_contents[u][v] = bin_contents[u][v] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
-
-                else:
-                    bin_contents[u] = bin_contents[u] + event.get_var("osc_weight") * subsample.get_event_scaling(sample.parameters.target_mass, sample.parameters.pot)
-
-        for i_bin in tqdm(range(1, binning.n_bins[0] + 1), desc = "gettin' gradients"):
-
-            j_iterator = [-999]
-            if binning.n_dims == 2:
-                j_iterator = range(1, binning.n_bins[1] + 1)
-
-            for j_bin in j_iterator:
-
-                ## fill the gradient histogram for each osc parameter
-                for osc_par_name, osc_par in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()): 
-                
-                    ## do the backward propagation to get gradient in terms of each osc parameter
-                    if binning.n_dims == 1:
-                        if bin_contents[i_bin ].numpy()[0] == 0.0:
-                            continue
-
-                        gradient = grad(bin_contents[i_bin], osc_par)
-                        fisher_info = tensor.pow(gradient, 2.0)
-
-                    elif binning.n_dims == 2:
-                        if bin_contents[i_bin ][j_bin ].numpy()[0] == 0.0:
-                            continue
-
-                        gradient = grad(bin_contents[i_bin][j_bin], osc_par)
-                        fisher_info = tensor.pow(gradient, 2.0)
-
-                    if binning.n_dims == 1:
-                        gradients[osc_par_name][i_bin - 1] = gradient.numpy()[0]
-                        fisher_informations[osc_par_name][i_bin - 1] = fisher_info.numpy()[0]
-                    elif binning.n_dims == 2:
-                        gradients[osc_par_name][i_bin - 1][j_bin -1] = gradient.numpy()[0]
-                        fisher_informations[osc_par_name][i_bin - 1][j_bin - 1] = fisher_info.numpy()[0]
+            fisher_informations[osc_par] = gradients[osc_par] * gradients[osc_par]
 
         if self.make_plots:
             for osc_par in self.oscillator.parameters.keys():
@@ -194,7 +154,6 @@ class CalculateFisherInfo:
                     data[data == 0] = np.nan
 
                     if binning.n_dims == 2:
-                        u_bins, v_bins = binning.bins
 
                         mappable = ax.pcolormesh(binning.bins[0], binning.bins[1], data.T)
 

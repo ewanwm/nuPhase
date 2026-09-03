@@ -219,7 +219,9 @@ class SubSample:
         initial_flavour: NuFlavour, 
         final_flavour: NuFlavour,
         oscillator: OscillationCalculator = None, 
-        base_pot=1e21
+        base_pot=1e21,
+        do_binned_osc_probs: bool = True,
+        osc_energy_binning: np.array = np.linspace(0.0, 2.0, 1000)
     ):
 
         self.label: str                        = label
@@ -234,6 +236,18 @@ class SubSample:
         self.events: typing.List[Event] = []
         self._flux_hist: np.array       = None
         self._flux_binning: np.array    = None
+
+        ## binned oscillation stuff
+        self.do_binned_osc_probs  = do_binned_osc_probs
+        self.osc_energy_binning   = None
+        self.binned_osc_probs     = None
+        self.binned_gradients     = None
+        self.binned_second_derivs = None
+        if self.do_binned_osc_probs:
+            self.osc_energy_binning = osc_energy_binning
+
+            if self.oscillator is not None:
+                self._prep_binned_osc(save_gradients = True)
 
         ## The weight that should be applied to events in this sample to 
         ## recover the cross section that was used to generate the events
@@ -299,11 +313,14 @@ class SubSample:
             base_pot = self.base_pot
         )
 
-        new_subsample.flux_hist         = self.flux_hist
-        new_subsample.flux_binning      = self.flux_binning
-        new_subsample.integrated_flux   = self.integrated_flux
-        new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
-        new_subsample.oscillator        = self.oscillator
+        new_subsample.flux_hist            = self.flux_hist
+        new_subsample.flux_binning         = self.flux_binning
+        new_subsample.integrated_flux      = self.integrated_flux
+        new_subsample.fixed_xsec_weight    = self.fixed_xsec_weight
+        new_subsample.oscillator           = self.oscillator
+        new_subsample.binned_osc_probs     = self.binned_osc_probs
+        new_subsample.binned_gradients     = self.binned_gradients
+        new_subsample.binned_second_derivs = self.binned_second_derivs
 
         return new_subsample
     
@@ -391,51 +408,115 @@ class SubSample:
 
         return new_subsample
     
+    def _prep_binned_osc(self, save_gradients: bool = True, second_deriv: bool = False):
+
+        assert self.oscillator is not None, "trying to oscillate a subsample with no oscillator????!!!!????"
+
+        energy_bin_centres = (self.osc_energy_binning[1:] + self.osc_energy_binning[:-1]) / 2.0
+
+        n_bins = energy_bin_centres.shape[0]
+
+        self.binned_osc_probs = np.ones((n_bins,))
+
+        self.binned_gradients     = {}
+        self.binned_second_derivs = {}
+
+        for par_name in self.oscillator.parameters.keys():
+            self.binned_gradients[par_name]     = np.zeros((n_bins,))
+            self.binned_second_derivs[par_name] = np.zeros((n_bins,))
+
+        for i_bin in range(n_bins):
+
+            osc_probs = self.oscillator.calculate_osc_probs(np.array([energy_bin_centres[i_bin]]))
+            osc_prob_tensor = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
+
+            self.binned_osc_probs[i_bin] = osc_prob_tensor.numpy()
+
+            if save_gradients or second_deriv:
+
+                for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+
+                    grad_tensor = grad(osc_prob_tensor, parameter)
+                    self.binned_gradients[par_name][i_bin] = grad_tensor.numpy()
+
+                    if second_deriv:
+
+                        second_deriv_tensor = grad(grad_tensor, parameter)
+                        self.binned_second_derivs[par_name][i_bin] = second_deriv_tensor.numpy()
+    
     def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False, second_deriv: bool = False) -> None:
         """Calculate oscillations for each event and fill auxilary variable "osc_weight" with tensor containing oscillation weight
 
         If there is no oscillator for this subsample then the oscillation weight will just be 1
-
-        TODO: add option to also save the gradients for each osc parameter, maybe also second derivatives, fisher info etc.
         """
 
         if self.oscillator is None:
 
             for event in self.events:
-                event.aux_vars["osc_weight"] = tensor.ones([1])
+                event.aux_vars["osc_weight"] = 1.0
 
+                for par_name in self.oscillator.parameters.keys():
+                    if save_gradients:
+                        event.aux_vars[f"osc_weight_{par_name}_grad"] = 0.0
+
+                    if second_deriv:
+                        event.aux_vars[f"osc_weight_{par_name}_second_grad"] = 0.0
             return
-        
-        energies = self.get_array("Enu_true")
-        osc_probs = self.oscillator.calculate_osc_probs(energies)
-        osc_weights = osc_probs.get_values(["...", self.initial_flavour, self.final_flavour])
 
         iterator = self.events
         if progress_bar:
-            iterator = tqdm(self.events, desc="oscillatin' events")
+            iterator = tqdm(self.events, desc=f"oscillatin' events [{self.label}]")
         
-        for i_event, event in enumerate(iterator):
+        for event in iterator:
 
-            event_weight = osc_weights.get_values([i_event])
+            if self.do_binned_osc_probs:
 
-            event.aux_vars["osc_weight"] = event_weight
+                event_e_bin = np.digitize(event.enu_true, self.osc_energy_binning)
 
-            if save_gradients:
+                ## check for events outside of the osc energy range
+                if event_e_bin < 0 or event_e_bin >= self.osc_energy_binning.shape[0] - 1:
+                    event.aux_vars["osc_weight"] = 0.0
 
-                for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+                    for par_name in self.oscillator.parameters.keys():
+                        if save_gradients:
+                            event.aux_vars[f"osc_weight_{par_name}_grad"] = 0.0
+                        if second_deriv:
+                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = 0.0
 
-                    parameter_grad_tensor = grad(event_weight, parameter)
-                    parameter_grad = parameter_grad_tensor.numpy()[0]
+                    continue
 
-                    event.aux_vars[f"osc_weight_{par_name}_grad"] = parameter_grad
+                event.aux_vars["osc_weight"] = self.binned_osc_probs[event_e_bin]
+    
+                if save_gradients or second_deriv:
+    
+                    for par_name in self.oscillator.parameters.keys():
+    
+                        event.aux_vars[f"osc_weight_{par_name}_grad"] = self.binned_gradients[par_name][event_e_bin]
+    
+                        if second_deriv:
+    
+                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = self.binned_second_derivs[par_name][event_e_bin]
+                            
+            else:
 
-                    if second_deriv:
+                osc_probs = self.oscillator.calculate_osc_probs(np.array([event.enu_true]))
+                event_weight = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
 
-                        parameter_second_deriv = grad(parameter_grad_tensor, parameter)
+                event.aux_vars["osc_weight"] = event_weight.numpy()
 
-                        event.aux_vars[f"osc_weight_{par_name}_second_grad"] = parameter_second_deriv
+                if save_gradients or second_deriv:
 
-                self.oscillator.zero_grad()
+                    for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+
+                        parameter_grad = grad(event_weight, parameter)
+                        
+                        event.aux_vars[f"osc_weight_{par_name}_grad"] = parameter_grad.numpy()[0]
+
+                        if second_deriv:
+
+                            parameter_second_deriv = grad(parameter_grad, parameter)
+
+                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = parameter_second_deriv.numpy()[0]
 
     def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None, weight_var: str = None):
 
