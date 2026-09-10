@@ -176,3 +176,29 @@ class CalculateFisherInfo:
                     plt.close(fig)
 
         return fisher_informations
+
+class ApplyVariableSmearing:
+    """Smear a truth variable to mimic finite detector resolution
+    """
+
+    def __init__(
+        self, 
+        true_var: str, 
+        smeared_var: str,
+        smear_function: typing.Callable
+    ):
+        self.true_var       = true_var
+        self.smeared_var    = smeared_var
+        self.smear_function = smear_function
+
+        self.generator      = np.random.default_rng(seed=None)
+
+    def apply(self, sample: Sample):
+
+        for event in sample.events:
+
+            true_var = event.get_var(self.true_var)
+
+            scale = self.smear_function(true_var)
+
+            event.aux_vars[self.smeared_var] = self.generator.normal(loc = true_var, scale = scale)
