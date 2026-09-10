@@ -425,7 +425,7 @@ class SubSample:
             if cut is None or cut(event):
                 values.append(event.get_var(key))
 
-        return np.array(values)
+        return np.array(values, dtype = float)
     
     def apply_selection(self, selection: SelectionBase, progress_bar: bool = False) -> 'SubSample':
         """Apply a selection to the events in this subsample
@@ -561,33 +561,34 @@ class SubSample:
 
         data_list = []
 
-        ## keep track of num of events passing the cut
-        n_events = 0
+        ## we need to check for nan / None values as some variables might not be filled for some events
+        energies = self.get_array("Enu_true", cut)
+        not_nan = np.full(energies.shape, True)
 
         for iVar in range(binning.n_dims):
             array = self.get_array(binning.variables[iVar], cut)
 
             data_list.append(array)
 
-            if iVar == 0:
-                n_events = array.shape[0]
+            if array.shape[0] != 0:
+
+                not_nan = np.logical_and(not_nan, np.logical_not(np.isnan(array)))
 
         ## caclulate oscillation weights if needed
-        osc_weights = np.ones(n_events)
+        osc_weights = np.ones((np.sum(not_nan)))
         if self.oscillator is not None:
-            energies = self.get_array("Enu_true", cut)
-            osc_probs = self.oscillator.calculate_osc_probs(energies)
+            osc_probs = self.oscillator.calculate_osc_probs(energies[not_nan], antineutrino=self.antinu)
             osc_weights = osc_probs.numpy()[:, self.initial_flavour, self.final_flavour]
 
         ## if weight variable specified make weight array
         weight_array = None
         if weight_var is not None:
-            weight_array = self.get_array(weight_var, cut=cut)
+            weight_array = self.get_array(weight_var, cut=cut)[not_nan]
         else:
-            weight_array = np.ones(n_events)
+            weight_array = np.ones((np.sum(not_nan)))
 
         ## now make the histogram
-        hist, _ = np.histogramdd(data_list, bins = binning.bins, weights = osc_weights * weight_array)
+        hist, _ = np.histogramdd([data[not_nan] for data in data_list], bins = binning.bins, weights = osc_weights * weight_array)
 
         return hist * self.get_event_scaling(target_mass, pot)
 
