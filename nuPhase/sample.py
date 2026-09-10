@@ -250,7 +250,8 @@ class SubSample:
         oscillator: OscillationCalculator = None, 
         base_pot=1e21,
         do_binned_osc_probs: bool = True,
-        osc_energy_binning: np.array = np.linspace(0.0, 2.0, 1000)
+        osc_energy_binning: np.array = np.linspace(0.0, 5.0, 1000),
+        antineutrino: bool = False
     ):
 
         self.label: str                        = label
@@ -260,6 +261,8 @@ class SubSample:
         self.initial_flavour: NuFlavour        = initial_flavour
         self.final_flavour: NuFlavour          = final_flavour
         self.oscillator: OscillationCalculator = oscillator
+
+        self.antinu: bool                      = antineutrino
 
         ## these should be filled later
         self.events: typing.List[Event] = []
@@ -350,6 +353,7 @@ class SubSample:
         new_subsample.binned_osc_probs     = self.binned_osc_probs
         new_subsample.binned_gradients     = self.binned_gradients
         new_subsample.binned_second_derivs = self.binned_second_derivs
+        new_subsample.antinu               = self.antinu
 
         return new_subsample
     
@@ -456,7 +460,7 @@ class SubSample:
 
         for i_bin in range(n_bins):
 
-            osc_probs = self.oscillator.calculate_osc_probs(np.array([energy_bin_centres[i_bin]]))
+            osc_probs = self.oscillator.calculate_osc_probs(np.array([energy_bin_centres[i_bin]]), antineutrino=self.antinu)
             osc_prob_tensor = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
 
             self.binned_osc_probs[i_bin] = osc_prob_tensor.numpy()
@@ -528,7 +532,7 @@ class SubSample:
                             
             else:
 
-                osc_probs = self.oscillator.calculate_osc_probs(np.array([event.enu_true]))
+                osc_probs = self.oscillator.calculate_osc_probs(np.array([event.enu_true]), antineutrino=self.antinu)
                 event_weight = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
 
                 event.aux_vars["osc_weight"] = event_weight.numpy()

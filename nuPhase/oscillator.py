@@ -80,7 +80,7 @@ class OscillationCalculator:
 
                 parameter.zero_grad()
 
-    def calculate_osc_probs(self, energies: typing.Union[np.ndarray, Tensor]) -> Tensor:
+    def calculate_osc_probs(self, energies: typing.Union[np.ndarray, Tensor], antineutrino: bool = False) -> Tensor:
         """Calculate oscillation probability for a given set of energies
         
         If energies has shape [n], returned probabilities tensor will have shape [n, 3, 3]
@@ -93,7 +93,8 @@ class OscillationCalculator:
             energies_tensor = energies
         else:
             raise ValueError("bad type for energies, should be numpy array or nuTens Tensor")
-        
+
+        self.propagator.set_antineutrino(antineutrino)        
         self.propagator.set_energies(energies_tensor * nt.units.GeV)
         
         return self.propagator.calculate_probs()
