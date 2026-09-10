@@ -363,7 +363,7 @@ class SubSample:
 
         return new_subsample
     
-    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3", "ELep", "CosLep"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
+    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
         """Fill this subsample with events read in from a nuisance flat tree
         """
 
