@@ -288,6 +288,9 @@ class SubSample:
         ## The integrated flux for this subsample
         self.integrated_flux = None
 
+        ## weight to apply to account for using less than max num of events in file
+        self.n_max_events_weight = 1.0
+
     def _get_event_info(self, file: NuisanceFile, aux_vars: typing.List[str], progress_bar: bool, max_n_events: int = None) -> None:
         """read event info from input file and turn it into an array of events
         """
@@ -312,6 +315,8 @@ class SubSample:
 
         n_events_to_read = n_particle_array.shape[0]
         if max_n_events is not None:
+            self.n_max_events_weight = n_events_to_read / max_n_events
+
             n_events_to_read = min(max_n_events, n_events_to_read)
 
         iterable = range(n_events_to_read)
@@ -349,6 +354,7 @@ class SubSample:
         new_subsample.flux_binning         = self.flux_binning
         new_subsample.integrated_flux      = self.integrated_flux
         new_subsample.fixed_xsec_weight    = self.fixed_xsec_weight
+        new_subsample.n_max_events_weight  = self.n_max_events_weight
         new_subsample.oscillator           = self.oscillator
         new_subsample.binned_osc_probs     = self.binned_osc_probs
         new_subsample.binned_gradients     = self.binned_gradients
@@ -404,7 +410,7 @@ class SubSample:
         n_nucleons = self.target_material.get_n_nucleons(target_mass)
         pot_weight = self.get_pot_weight(pot)
         
-        return self.integrated_flux * self.fixed_xsec_weight * n_nucleons * pot_weight
+        return self.integrated_flux * self.fixed_xsec_weight * self.n_max_events_weight * n_nucleons * pot_weight
 
     def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
         """Get an array of event level variables for each event in this SubSample
