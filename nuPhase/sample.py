@@ -378,22 +378,22 @@ class SubSample:
         return self
 
 
-    def get_integrated_flux(self, bin_width_normalised=True) -> float:
+    def get_integrated_flux(self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05) -> float:
 
         assert self.flux_hist is not None, "hmmmm, flux hist is None. Has this subsample been initialised properly????"
 
         counts, bin_edges = self.flux_hist ## counts are in units of [1 / (cm^2 * 50 MeV * 10^21 POT)]
-        bin_widths = ( bin_edges[1:] - bin_edges[:-1] ) / 0.05 ## bin widths "in units of [50MeV]"
+        bin_widths = ( bin_edges[1:] - bin_edges[:-1] )
 
         ret = None
 
         if bin_width_normalised:
-            ret = (counts * bin_widths).sum() ## flux in units of [1 / (cm^2 * 10^21 POT)]
+            ret = (counts * bin_widths).sum() ## flux in units of [1 / (cm^2 * 10^21 POT * 50MeV)]
 
         else:
             ret = counts.sum()
 
-        return ret
+        return ret * scale_factor
     
     def get_xsec_weight(self) -> float:
 
