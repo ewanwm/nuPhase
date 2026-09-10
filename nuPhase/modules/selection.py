@@ -13,7 +13,7 @@ class SelectionBase(abc.ABC):
 
         raise NotImplementedError()
 
-class SelectionNumu0Pi1P0N(SelectionBase):
+class SelectionNumu0PiNP0N(SelectionBase):
     """Selects events with:
     - one and only one muon with momentum > muon_threshold
     - one and only one proton with momentum > proton_threshold
@@ -26,7 +26,8 @@ class SelectionNumu0Pi1P0N(SelectionBase):
         muon_threshold: float, 
         proton_threshold: float, 
         pion_threshold: float, 
-        neutron_threshold: float
+        neutron_threshold: float,
+        n_protons: int = 0
     ):
 
         self.muon_threshold    = muon_threshold
@@ -34,7 +35,9 @@ class SelectionNumu0Pi1P0N(SelectionBase):
         self.pion_threshold    = pion_threshold
         self.neutron_threshold = neutron_threshold
 
-        self.name = "numu 0pi 1proton 0 neutron"
+        self.name = f"numu 0pi {n_protons} proton 0 neutron"
+
+        self.n_proton = n_protons
 
     def apply(self, event: Event) -> bool:
 
@@ -71,7 +74,7 @@ class SelectionNumu0Pi1P0N(SelectionBase):
 
         if (
             muons_above_threshold    == 1 and
-            protons_above_threshold  == 1 and
+            protons_above_threshold  == self.n_proton and
             pions_above_threshold    == 0 and
             neutrons_above_threshold == 0
         ):
@@ -285,7 +288,8 @@ class SelectionNue0PiNP0N(SelectionBase):
         electron_threshold: float, 
         proton_threshold: float, 
         pion_threshold: float, 
-        neutron_threshold: float
+        neutron_threshold: float,
+        n_protons: int = 0
     ):
 
         self.electron_threshold = electron_threshold
@@ -293,7 +297,9 @@ class SelectionNue0PiNP0N(SelectionBase):
         self.pion_threshold     = pion_threshold
         self.neutron_threshold  = neutron_threshold
 
-        self.name = "nue 0pi 1proton 0 neutron"
+        self.name = f"nue 0pi {n_protons} proton 0 neutron"
+
+        self.n_proton = n_protons
 
     def apply(self, event: Event) -> bool:
 
@@ -331,7 +337,7 @@ class SelectionNue0PiNP0N(SelectionBase):
 
         if (
             electrons_above_threshold == 1 and
-            protons_above_threshold   == 1 and
+            protons_above_threshold   == self.n_proton and
             pions_above_threshold     == 0 and
             neutrons_above_threshold  == 0
         ):
@@ -346,7 +352,7 @@ class SelectionNue0PiNP0N(SelectionBase):
 
 class SelectionNue0Pi0P(SelectionBase):
     """Selects events with:
-    - one and only one electron with momentum > muon_threshold
+    - one and only one electron or positron with momentum > electron_threshold
     - no protons with momentum > proton_threshold
     - no pions (any charge) with momentum > pion_threshold
     """
@@ -374,7 +380,7 @@ class SelectionNue0Pi0P(SelectionBase):
 
         for particle in event.particles:
 
-            if particle.pdg == 11:
+            if abs(particle.pdg) == 11:
                 if particle.momentum > self.electron_threshold:
                     electrons_above_threshold += 1
 
@@ -407,7 +413,7 @@ class SelectionNue0Pi0P(SelectionBase):
 
 class SelectionNumu0Pi0P(SelectionBase):
     """Selects events with:
-    - one and only one muon with momentum > muon_threshold
+    - one and only one muon or anti-muon with momentum > muon_threshold
     - no protons with momentum > proton_threshold
     - no pions (any charge) with momentum > pion_threshold
     """
@@ -435,7 +441,7 @@ class SelectionNumu0Pi0P(SelectionBase):
 
         for particle in event.particles:
 
-            if particle.pdg == 13:
+            if abs(particle.pdg) == 13:
                 if particle.momentum > self.muon_threshold:
                     muons_above_threshold += 1
                     
