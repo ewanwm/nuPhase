@@ -157,6 +157,35 @@ class Binning:
 
         return ret
 
+    def get_2d_projections(self) -> typing.List['Binning']:
+        """Get all possible 2D projections for this binning
+        """
+
+        ret = []
+
+        if self.n_dims < 2:
+            return ret
+
+        for iDim in range(self.n_dims):
+            for jDim in range(iDim + 1, self.n_dims):
+
+                ret.append(self.project([self.variables[iDim], self.variables[jDim]]))
+
+        return ret
+
+    def get_1d_projections(self) -> typing.List['Binning']:
+        """Get all 1D projections for this binning
+        """
+
+        ret = []
+
+        for iDim in range(self.n_dims):
+
+            ret.append(self.project([self.variables[iDim]]))
+
+        return ret
+
+
 class Parameters:
 
     def __init__(
