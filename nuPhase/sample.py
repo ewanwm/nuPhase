@@ -638,18 +638,16 @@ class Sample:
         return new_sample
 
     
-    def imshow(self, axis, data_override: np.array, binning: Binning = None, z_label: str = None, *imshow_args):
+    def imshow(self, axis, data_override: np.array, binning: Binning = None, z_label: str = None, **imshow_args):
         
         if binning is None:
             binning = self.binning
 
         assert binning.n_dims == 2, "need 2 dims for imshowing!!!"
 
-        u_bins, v_bins = binning.bins
-
         dat = data_override
 
-        mappable = axis.pcolormesh(binning.bins[0], binning.bins[1], dat.T, *imshow_args)
+        mappable = axis.pcolormesh(binning.bins[0], binning.bins[1], dat.T, **imshow_args)
 
         cbar = plt.colorbar(mappable)
         if z_label is None:
