@@ -601,11 +601,11 @@ class Sample:
         name: str
     ):
 
-        self.name = name
-        self.n_dims = binning.n_dims
-        self.binning = binning
-        self.subsamples = subsamples
-        self.parameters = parameters
+        self.name: str                          = name
+        self.n_dims: int                        = binning.n_dims
+        self.binning: Binning                   = binning
+        self.subsamples: typing.List[SubSample] = subsamples
+        self.parameters: typing.List[SubSample] = parameters
         
         self.events: typing.List[Event] = []
         for subsample in self.subsamples:
