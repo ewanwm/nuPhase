@@ -514,8 +514,12 @@ class SubSample:
 
                 ## check for events outside of the osc energy range
                 if event_e_bin < 0 or event_e_bin >= self.osc_energy_binning.shape[0] - 1:
-                    event.aux_vars["osc_weight"] = 0.0
 
+                    if self.initial_flavour == self.final_flavour:
+                        event.aux_vars["osc_weight"] = 1.0
+                    else:
+                        event.aux_vars["osc_weight"] = 0.0
+                    
                     for par_name in self.oscillator.parameters.keys():
                         if save_gradients:
                             event.aux_vars[f"osc_weight_{par_name}_grad"] = 0.0
