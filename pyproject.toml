@@ -37,7 +37,8 @@
     "nuTens>=0.6",
     "matplotlib",
     "tqdm",
-    "uproot"
+    "uproot",
+    "argcomplete"
   ]
 
   dynamic = ["version"]
@@ -64,14 +65,12 @@
 
 [build-system]
 
-    requires = ["setuptools"]
-    build-backend = "setuptools.build_meta"
+  requires = ["setuptools"]
+  build-backend = "setuptools.build_meta"
 
 [project.scripts]
 
-  # nuPhase = "nuPhase:app.nuPhase.main"
-
-  phase-space-analysis = "nuPhase.app.phase_space_analysis:main"
+  nuPhase = "nuPhase.app.nuPhase:main"
   prepare-samples = "nuPhase.app.prepare_samples:main"
 
 [tool.setuptools]
