@@ -12,10 +12,16 @@ from nuTens.autograd import grad
 from nuPhase.sample import Sample, Binning
 from nuPhase.oscillator import OscillationCalculator
 
+
 class CalculateFisherInfo:
 
-    def __init__(self, oscillator: OscillationCalculator, make_plots: bool = True, plot_file_name: str = "Fisher-info.pdf"):
-        
+    def __init__(
+        self,
+        oscillator: OscillationCalculator,
+        make_plots: bool = True,
+        plot_file_name: str = "Fisher-info.pdf",
+    ):
+
         self.make_plots = make_plots
         self.oscillator = oscillator
 
@@ -33,8 +39,8 @@ class CalculateFisherInfo:
 
     def make_fisher_event_rates(self, sample: Sample):
 
-        fisher_info = self.get_fisher_info(sample = sample, binning = sample.binning)
-        event_rates = sample.get_event_rates( binning = sample.binning, keep_zero=True)
+        fisher_info = self.get_fisher_info(sample=sample, binning=sample.binning)
+        event_rates = sample.get_event_rates(binning=sample.binning, keep_zero=True)
 
         for parameter_name in self.oscillator.parameters.keys():
 
@@ -42,10 +48,16 @@ class CalculateFisherInfo:
 
             for event in sample.events:
 
-                bins = tuple(sample.binning.digitize([event.get_var(var) for var in sample.binning.variables]))
+                bins = tuple(
+                    sample.binning.digitize(
+                        [event.get_var(var) for var in sample.binning.variables]
+                    )
+                )
 
                 try:
-                    event.aux_vars[f"{parameter_name}_fisher_info"] = per_event_fisher_info[bins]
+                    event.aux_vars[f"{parameter_name}_fisher_info"] = (
+                        per_event_fisher_info[bins]
+                    )
                 except IndexError:
                     event.aux_vars[f"{parameter_name}_fisher_info"] = 0.0
                     continue
@@ -74,19 +86,20 @@ class CalculateFisherInfo:
                     plt.stairs(dat, sample.binning.bins[0])
                     plt.xlabel(f"{sample.binning.variables[0]}")
                     plt.ylabel("Fisher info")
-                    plt.title(f"{sample.name} {parameter_name} \nPer-event Fisher Information")
+                    plt.title(
+                        f"{sample.name} {parameter_name} \nPer-event Fisher Information"
+                    )
                     self._pdf.savefig(fig)
 
-                    
                     plt.close(fig)
-                    
+
                 elif sample.binning.n_dims == 2:
                     fig, ax = plt.subplots()
 
                     dat = fisher_info[parameter_name][...]
                     dat[dat == 0.0] = np.nan
 
-                    sample.imshow(ax, data_override = dat, z_label = "Fisher Information")
+                    sample.imshow(ax, data_override=dat, z_label="Fisher Information")
                     plt.title(f"{sample.name} {parameter_name} \nFisher Information")
                     self._pdf.savefig(fig)
 
@@ -96,22 +109,30 @@ class CalculateFisherInfo:
                     dat = per_event_fisher_info[...]
                     dat[dat == 0.0] = np.nan
 
-                    sample.imshow(ax, data_override = dat, z_label = "Per-event Fisher Information")
-                    plt.title(f"{sample.name} {parameter_name} \nPer-event Fisher Information")
+                    sample.imshow(
+                        ax, data_override=dat, z_label="Per-event Fisher Information"
+                    )
+                    plt.title(
+                        f"{sample.name} {parameter_name} \nPer-event Fisher Information"
+                    )
                     self._pdf.savefig(fig)
 
                     plt.close(fig)
 
                 else:
-                    raise ValueError("Can't make fisher info plots for n-dims != 1 or 2 :(")
+                    raise ValueError(
+                        "Can't make fisher info plots for n-dims != 1 or 2 :("
+                    )
 
-    def get_fisher_info(self, sample: Sample, binning: Binning = None) -> typing.Tuple[np.ndarray]:
+    def get_fisher_info(
+        self, sample: Sample, binning: Binning = None
+    ) -> typing.Tuple[np.ndarray]:
 
         if binning is None:
             binning = sample.binning
-            
+
         ## calculate the osc probs
-        sample.oscillate_events(progress_bar = True, save_gradients = True)
+        sample.oscillate_events(progress_bar=True, save_gradients=True)
 
         if self.make_plots:
             for subsample in sample.subsamples:
@@ -124,11 +145,14 @@ class CalculateFisherInfo:
                 plt.xlabel("Enu [GeV]")
 
                 self._pdf.savefig(fig)
-                    
+
                 for par_name in self.oscillator.parameters.keys():
 
                     fig.clear()
-                    plt.stairs(subsample.binned_gradients[par_name], subsample.osc_energy_binning)
+                    plt.stairs(
+                        subsample.binned_gradients[par_name],
+                        subsample.osc_energy_binning,
+                    )
                     plt.title(f"{subsample.label} Binned {par_name} Gradients")
                     plt.xlabel("Enu [GeV]")
 
@@ -139,7 +163,9 @@ class CalculateFisherInfo:
 
         for osc_par in self.oscillator.parameters.keys():
 
-            gradients[osc_par] = sample.get_event_rates(weight_var = f"osc_weight_{osc_par}_grad")
+            gradients[osc_par] = sample.get_event_rates(
+                weight_var=f"osc_weight_{osc_par}_grad"
+            )
 
             fisher_informations[osc_par] = gradients[osc_par] * gradients[osc_par]
 
@@ -148,21 +174,23 @@ class CalculateFisherInfo:
 
                 for data_dict, label in zip([gradients], ["Gradient"]):
                     fig, ax = plt.subplots()
-                    
+
                     data = data_dict[osc_par]
 
                     data[data == 0] = np.nan
 
                     if binning.n_dims == 2:
 
-                        mappable = ax.pcolormesh(binning.bins[0], binning.bins[1], data.T)
+                        mappable = ax.pcolormesh(
+                            binning.bins[0], binning.bins[1], data.T
+                        )
 
                         ax.set_xlabel(binning.variables[0])
                         ax.set_ylabel(binning.variables[1])
 
                         cbar = plt.colorbar(mappable)
                         cbar.set_label(f"{label}")
-                        
+
                     elif binning.n_dims == 1:
 
                         ax.stairs(data, binning.bins[0])
@@ -172,26 +200,23 @@ class CalculateFisherInfo:
                     plt.title(f"{sample.name} {osc_par} {label}")
 
                     self._pdf.savefig(fig)
-                    
+
                     plt.close(fig)
 
         return fisher_informations
 
+
 class ApplyVariableSmearing:
-    """Smear a truth variable to mimic finite detector resolution
-    """
+    """Smear a truth variable to mimic finite detector resolution"""
 
     def __init__(
-        self, 
-        true_var: str, 
-        smeared_var: str,
-        smear_function: typing.Callable
+        self, true_var: str, smeared_var: str, smear_function: typing.Callable
     ):
-        self.true_var       = true_var
-        self.smeared_var    = smeared_var
+        self.true_var = true_var
+        self.smeared_var = smeared_var
         self.smear_function = smear_function
 
-        self.generator      = np.random.default_rng(seed=None)
+        self.generator = np.random.default_rng(seed=None)
 
     def apply(self, sample: Sample):
 
@@ -201,4 +226,6 @@ class ApplyVariableSmearing:
 
             scale = self.smear_function(true_var)
 
-            event.aux_vars[self.smeared_var] = self.generator.normal(loc = true_var, scale = scale)
+            event.aux_vars[self.smeared_var] = self.generator.normal(
+                loc=true_var, scale=scale
+            )

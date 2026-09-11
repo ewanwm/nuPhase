@@ -18,15 +18,16 @@ from nuPhase.modules.selection import SelectionBase
 
 from tqdm import tqdm
 
+
 class NuFlavour(IntEnum):
 
     electron = 0
     muon = 1
     tau = 2
 
+
 class Binning:
-    """Represents binning for use in analyses
-    """
+    """Represents binning for use in analyses"""
 
     def __init__(
         self,
@@ -35,12 +36,14 @@ class Binning:
         ranges: typing.Tuple[typing.Tuple[float]] = None,
         bins: typing.List[np.array] = None,
     ):
-        
+
         self.variables = variables
         self.n_dims = len(variables)
 
         if bins is None:
-            assert len(variables) == len(n_bins) == len(ranges), f"Bad binning! lenght of variables ({len(variables)}) must be equal to length of n_bins ({len(n_bins)} and ranges ({len(ranges)})!!!"
+            assert (
+                len(variables) == len(n_bins) == len(ranges)
+            ), f"Bad binning! lenght of variables ({len(variables)}) must be equal to length of n_bins ({len(n_bins)} and ranges ({len(ranges)})!!!"
 
             self.n_bins = n_bins
             self.ranges = ranges
@@ -54,7 +57,9 @@ class Binning:
 
         else:
 
-            assert len(bins) == self.n_dims, f"bad bins! must have same number of dimensions as number of variables!! was {len(bins)} vs {self.n_dims}"
+            assert (
+                len(bins) == self.n_dims
+            ), f"bad bins! must have same number of dimensions as number of variables!! was {len(bins)} vs {self.n_dims}"
             self.bins = bins
             self.n_bins = [b.shape[0] - 1 for b in bins]
             self.ranges = [(b[0], b[-1]) for b in bins]
@@ -63,21 +68,23 @@ class Binning:
 
         if type(other) is not Binning:
             return False
-        
+
         if self.n_dims != other.n_dims:
             return False
-        
+
         for myvar, othervar in zip(self.variables, other.variables):
             if myvar != othervar:
                 return False
-            
+
         for mybins, otherbins in zip(self.bins, other.bins):
             if not np.all(mybins == otherbins):
                 return False
-            
+
         return True
 
-    def digitize(self, values: typing.Union[typing.List[float], float]) -> typing.List[int]:
+    def digitize(
+        self, values: typing.Union[typing.List[float], float]
+    ) -> typing.List[int]:
 
         _values = values
         n_values = None
@@ -118,7 +125,7 @@ class Binning:
         else:
             i_var = self.variables.index(variable)
             return self.n_bins[i_var]
-        
+
     def get_range(self, variable: str = None):
 
         if variable is None:
@@ -127,8 +134,8 @@ class Binning:
         else:
             i_var = self.variables.index(variable)
             return self.ranges[i_var]
-        
-    def project(self, variables: typing.Union[str, typing.Iterable[str]]) -> 'Binning':
+
+    def project(self, variables: typing.Union[str, typing.Iterable[str]]) -> "Binning":
         """Create a projection of this binning onto the specified variables
 
         :param variables: The variables to project into
@@ -153,13 +160,12 @@ class Binning:
             if var not in self.variables:
                 raise ValueError(f"Variable {var} not found in binning!")
 
-        ret = Binning(_variables, bins = [self.get_bin_edges(var) for var in _variables])
+        ret = Binning(_variables, bins=[self.get_bin_edges(var) for var in _variables])
 
         return ret
 
-    def get_2d_projections(self) -> typing.List['Binning']:
-        """Get all possible 2D projections for this binning
-        """
+    def get_2d_projections(self) -> typing.List["Binning"]:
+        """Get all possible 2D projections for this binning"""
 
         ret = []
 
@@ -173,9 +179,8 @@ class Binning:
 
         return ret
 
-    def get_1d_projections(self) -> typing.List['Binning']:
-        """Get all 1D projections for this binning
-        """
+    def get_1d_projections(self) -> typing.List["Binning"]:
+        """Get all 1D projections for this binning"""
 
         ret = []
 
@@ -189,99 +194,96 @@ class Binning:
 class Parameters:
 
     def __init__(
-            self,
-            pot:float,
-            target_material: Molecule,
-            target_mass: float,
-        ):
-        
+        self,
+        pot: float,
+        target_material: Molecule,
+        target_mass: float,
+    ):
+
         self.pot: float = pot
         self.target_material: Molecule = target_material
         self.target_mass: float = target_mass
 
 
-class NuisanceFile: 
-    """Little convenience class for accessing data in nuisance files
-    """
+class NuisanceFile:
+    """Little convenience class for accessing data in nuisance files"""
 
-    def __init__(
-        self,
-        file_name: str,
-        pre_selection: str = None
-    ):
+    def __init__(self, file_name: str, pre_selection: str = None):
 
         self.pre_selection = pre_selection
 
         with uproot.open(file_name) as file:
 
             self._data = file["FlatTree_VARS"]
-            assert self._data is not None, f"No FlatTree_VARS tree in input file {file_name}! is this really a nuisance flattree???"
-            
+            assert (
+                self._data is not None
+            ), f"No FlatTree_VARS tree in input file {file_name}! is this really a nuisance flattree???"
+
             self.num_entries = self._data.num_entries
 
             self.flux_hist = file["FlatTree_FLUX"]
             self.scale_factor = self.get_array("fScaleFactor")[0]
 
     def __getitem__(self, key: str):
-        
+
         return self._data[key]
-    
+
     def get_arrays(self, keys: typing.List[str]):
 
         return self._data.arrays(keys, self.pre_selection, library="np")
-    
+
     def get_array(self, key: str):
 
         return self._data.arrays(key, self.pre_selection, library="np")[key]
-    
-    def keys(self): 
+
+    def keys(self):
 
         return self._data.keys()
-    
+
 
 class SubSample:
 
     def __init__(
-        self, 
-        label: str, 
-        target_material: Molecule, 
-        initial_flavour: NuFlavour, 
+        self,
+        label: str,
+        target_material: Molecule,
+        initial_flavour: NuFlavour,
         final_flavour: NuFlavour,
-        oscillator: OscillationCalculator = None, 
+        oscillator: OscillationCalculator = None,
         base_pot=1e21,
         do_binned_osc_probs: bool = True,
         osc_energy_binning: np.array = np.linspace(0.0, 5.0, 1000),
-        antineutrino: bool = False
+        antineutrino: bool = False,
     ):
 
-        self.label: str                        = label
-        self.base_pot:float                    = base_pot
-        self.target_material: Molecule         = target_material
+        self.label: str = label
+        self.base_pot: float = base_pot
+        self.target_material: Molecule = target_material
 
-        self.initial_flavour: NuFlavour        = initial_flavour
-        self.final_flavour: NuFlavour          = final_flavour
+        self.initial_flavour: NuFlavour = initial_flavour
+        self.final_flavour: NuFlavour = final_flavour
         self.oscillator: OscillationCalculator = oscillator
 
-        self.antinu: bool                      = antineutrino
+        self.antinu: bool = antineutrino
 
         ## these should be filled later
         self.events: typing.List[Event] = []
-        self._flux_hist: np.array       = None
-        self._flux_binning: np.array    = None
+        self._flux_hist: np.array = None
+        self._flux_binning: np.array = None
 
         ## binned oscillation stuff
-        self.do_binned_osc_probs  = do_binned_osc_probs
-        self.osc_energy_binning   = None
-        self.binned_osc_probs     = None
-        self.binned_gradients     = None
+        self.do_binned_osc_probs = do_binned_osc_probs
+        self.osc_energy_binning = None
+        self.binned_osc_probs = None
+        self.binned_gradients = None
         self.binned_second_derivs = None
         if self.do_binned_osc_probs:
             self.osc_energy_binning = osc_energy_binning
 
             if self.oscillator is not None:
-                self._prep_binned_osc(save_gradients = True)
+                self._prep_binned_osc(save_gradients=True)
 
-        ## The weight that should be applied to events in this sample to 
+        ## The weight that should be applied to events in this sample to
         ## recover the cross section that was used to generate the events
         self.fixed_xsec_weight = None
 
@@ -291,130 +293,168 @@ class SubSample:
         ## weight to apply to account for using less than max num of events in file
         self.n_max_events_weight = 1.0
 
-    def _get_event_info(self, file: NuisanceFile, aux_vars: typing.List[str], progress_bar: bool, max_n_events: int = None) -> None:
-        """read event info from input file and turn it into an array of events
-        """
+    def _get_event_info(
+        self,
+        file: NuisanceFile,
+        aux_vars: typing.List[str],
+        progress_bar: bool,
+        max_n_events: int = None,
+    ) -> None:
+        """read event info from input file and turn it into an array of events"""
 
         ## read arrays of particle info
         n_particle_array = file.get_array("nfsp")
-        px               = file.get_array("px")
-        py               = file.get_array("py")
-        pz               = file.get_array("pz")
-        energies         = file.get_array("E")
-        pdg              = file.get_array("pdg")
+        px = file.get_array("px")
+        py = file.get_array("py")
+        pz = file.get_array("pz")
+        energies = file.get_array("E")
+        pdg = file.get_array("pdg")
 
         ## read event level variables
-        nu_pdg      = file.get_array("PDGnu")
+        nu_pdg = file.get_array("PDGnu")
         nu_energies = file.get_array("Enu_true")
-        modes       = file.get_array("Mode")
+        modes = file.get_array("Mode")
 
         ## read auxilary variables specified by user
-        aux_var_arrays = [
-            file.get_array(aux_var) for aux_var in aux_vars
-        ]
+        aux_var_arrays = [file.get_array(aux_var) for aux_var in aux_vars]
 
         n_events_to_read = n_particle_array.shape[0]
         if max_n_events is not None:
-            self.n_max_events_weight = n_events_to_read / max_n_events
+            self.n_max_events_weight = n_events_to_read / min(
+                max_n_events, n_events_to_read
+            )
 
             n_events_to_read = min(max_n_events, n_events_to_read)
 
         iterable = range(n_events_to_read)
         if progress_bar:
-            iterable = tqdm(range(n_events_to_read), desc = f"Reading events for subsample {self.label}")
+            iterable = tqdm(
+                range(n_events_to_read),
+                desc=f"Reading events for subsample {self.label}",
+            )
 
         for i_event in iterable:
 
-            event = Event(e_nu = nu_energies[i_event], mode = modes[i_event], nu_pdg = nu_pdg[i_event])
+            event = Event(
+                e_nu=nu_energies[i_event], mode=modes[i_event], nu_pdg=nu_pdg[i_event]
+            )
 
-            event.add_particles_from_arrays(px=px[i_event], py=py[i_event], pz=pz[i_event], energies=energies[i_event], pdg=pdg[i_event])
+            event.add_particles_from_arrays(
+                px=px[i_event],
+                py=py[i_event],
+                pz=pz[i_event],
+                energies=energies[i_event],
+                pdg=pdg[i_event],
+            )
 
             ## add auxilary variables
             for aux_var, array in zip(aux_vars, aux_var_arrays):
                 event.aux_vars[aux_var] = array[i_event]
-            
+
             self.events.append(event)
 
-    def shallow_copy(self) -> 'SubSample':
+    def shallow_copy(self) -> "SubSample":
         """Makes a very shallow copy of this SubSample with all the same member variable values but an empty event list
 
         :return: copy
         :rtype: SubSample
         """
-         
+
         new_subsample = SubSample(
-            label = self.label, 
-            target_material = self.target_material, 
-            initial_flavour = self.initial_flavour, 
-            final_flavour = self.final_flavour, 
-            base_pot = self.base_pot
+            label=self.label,
+            target_material=self.target_material,
+            initial_flavour=self.initial_flavour,
+            final_flavour=self.final_flavour,
+            base_pot=self.base_pot,
         )
 
-        new_subsample.flux_hist            = self.flux_hist
-        new_subsample.flux_binning         = self.flux_binning
-        new_subsample.integrated_flux      = self.integrated_flux
-        new_subsample.fixed_xsec_weight    = self.fixed_xsec_weight
-        new_subsample.n_max_events_weight  = self.n_max_events_weight
-        new_subsample.oscillator           = self.oscillator
-        new_subsample.binned_osc_probs     = self.binned_osc_probs
-        new_subsample.binned_gradients     = self.binned_gradients
+        new_subsample.flux_hist = self.flux_hist
+        new_subsample.flux_binning = self.flux_binning
+        new_subsample.integrated_flux = self.integrated_flux
+        new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
+        new_subsample.n_max_events_weight = self.n_max_events_weight
+        new_subsample.oscillator = self.oscillator
+        new_subsample.binned_osc_probs = self.binned_osc_probs
+        new_subsample.binned_gradients = self.binned_gradients
         new_subsample.binned_second_derivs = self.binned_second_derivs
-        new_subsample.antinu               = self.antinu
+        new_subsample.antinu = self.antinu
 
         return new_subsample
-    
-    def fill_from_file(self, file: NuisanceFile, auxilary_variables = ["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"], progress_bar: bool = False, max_n_events: int = None) -> 'SubSample':
-        """Fill this subsample with events read in from a nuisance flat tree
-        """
 
-        self._get_event_info(file, auxilary_variables, progress_bar=progress_bar, max_n_events=max_n_events)
+    def fill_from_file(
+        self,
+        file: NuisanceFile,
+        auxilary_variables=["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"],
+        progress_bar: bool = False,
+        max_n_events: int = None,
+    ) -> "SubSample":
+        """Fill this subsample with events read in from a nuisance flat tree"""
+
+        self._get_event_info(
+            file,
+            auxilary_variables,
+            progress_bar=progress_bar,
+            max_n_events=max_n_events,
+        )
 
         self.flux_hist = file.flux_hist.to_numpy()
-        self.flux_binning = Binning(["Enu_true"], bins = [self.flux_hist[1]])
-        
+        self.flux_binning = Binning(["Enu_true"], bins=[self.flux_hist[1]])
+
         self.fixed_xsec_weight = file.scale_factor
-        self.integrated_flux   = self.get_integrated_flux()
+        self.integrated_flux = self.get_integrated_flux()
 
         return self
 
+    def get_integrated_flux(
+        self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05
+    ) -> float:
 
-    def get_integrated_flux(self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05) -> float:
+        assert (
+            self.flux_hist is not None
+        ), "hmmmm, flux hist is None. Has this subsample been initialised properly????"
 
-        assert self.flux_hist is not None, "hmmmm, flux hist is None. Has this subsample been initialised properly????"
-
-        counts, bin_edges = self.flux_hist ## counts are in units of [1 / (cm^2 * 50 MeV * 10^21 POT)]
-        bin_widths = ( bin_edges[1:] - bin_edges[:-1] )
+        counts, bin_edges = (
+            self.flux_hist
+        )  ## counts are in units of [1 / (cm^2 * 50 MeV * 10^21 POT)]
+        bin_widths = bin_edges[1:] - bin_edges[:-1]
 
         ret = None
 
         if bin_width_normalised:
-            ret = (counts * bin_widths).sum() ## flux in units of [1 / (cm^2 * 10^21 POT * 50MeV)]
+            ret = (
+                counts * bin_widths
+            ).sum()  ## flux in units of [1 / (cm^2 * 10^21 POT * 50MeV)]
 
         else:
             ret = counts.sum()
 
         return ret * scale_factor
-    
+
     def get_xsec_weight(self) -> float:
 
         return self.fixed_xsec_weight
-    
+
     def get_pot_weight(self, pot: float) -> float:
 
         return pot / self.base_pot
 
     def get_event_scaling(self, target_mass: float, pot: float) -> float:
-        """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT
-        """
+        """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT"""
 
         n_nucleons = self.target_material.get_n_nucleons(target_mass)
         pot_weight = self.get_pot_weight(pot)
-        
-        return self.integrated_flux * self.fixed_xsec_weight * self.n_max_events_weight * n_nucleons * pot_weight
+
+        return (
+            self.integrated_flux
+            * self.fixed_xsec_weight
+            * self.n_max_events_weight
+            * n_nucleons
+            * pot_weight
+        )
 
     def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
         """Get an array of event level variables for each event in this SubSample
-        
+
         returns an array containing values for each event filled with the specified variable.
         Can specify a cut which should be a function that takes an event as input and returns true or false.
         """
@@ -425,11 +465,13 @@ class SubSample:
             if cut is None or cut(event):
                 values.append(event.get_var(key))
 
-        return np.array(values, dtype = float)
-    
-    def apply_selection(self, selection: SelectionBase, progress_bar: bool = False) -> 'SubSample':
+        return np.array(values, dtype=float)
+
+    def apply_selection(
+        self, selection: SelectionBase, progress_bar: bool = False
+    ) -> "SubSample":
         """Apply a selection to the events in this subsample
-        
+
         Will return a copy of this subsapmple with only events that pass the selection in it
         """
 
@@ -437,8 +479,10 @@ class SubSample:
 
         iterator = self.events
         if progress_bar:
-            iterator = tqdm(self.events, desc = f"applying [{selection.name}] to {self.label}")
-        
+            iterator = tqdm(
+                self.events, desc=f"applying [{selection.name}] to {self.label}"
+            )
+
         for event in iterator:
 
             if selection.apply(event):
@@ -446,34 +490,45 @@ class SubSample:
                 new_subsample.events.append(event)
 
         return new_subsample
-    
+
     def _prep_binned_osc(self, save_gradients: bool = True, second_deriv: bool = False):
 
-        assert self.oscillator is not None, "trying to oscillate a subsample with no oscillator????!!!!????"
+        assert (
+            self.oscillator is not None
+        ), "trying to oscillate a subsample with no oscillator????!!!!????"
 
-        energy_bin_centres = (self.osc_energy_binning[1:] + self.osc_energy_binning[:-1]) / 2.0
+        energy_bin_centres = (
+            self.osc_energy_binning[1:] + self.osc_energy_binning[:-1]
+        ) / 2.0
 
         n_bins = energy_bin_centres.shape[0]
 
         self.binned_osc_probs = np.ones((n_bins,))
 
-        self.binned_gradients     = {}
+        self.binned_gradients = {}
         self.binned_second_derivs = {}
 
         for par_name in self.oscillator.parameters.keys():
-            self.binned_gradients[par_name]     = np.zeros((n_bins,))
+            self.binned_gradients[par_name] = np.zeros((n_bins,))
             self.binned_second_derivs[par_name] = np.zeros((n_bins,))
 
         for i_bin in range(n_bins):
 
-            osc_probs = self.oscillator.calculate_osc_probs(np.array([energy_bin_centres[i_bin]]), antineutrino=self.antinu)
-            osc_prob_tensor = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
+            osc_probs = self.oscillator.calculate_osc_probs(
+                np.array([energy_bin_centres[i_bin]]), antineutrino=self.antinu
+            )
+            osc_prob_tensor = osc_probs.get_values(
+                [0, self.initial_flavour, self.final_flavour]
+            )
 
             self.binned_osc_probs[i_bin] = osc_prob_tensor.numpy()
 
             if save_gradients or second_deriv:
 
-                for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+                for par_name, parameter in zip(
+                    self.oscillator.parameters.keys(),
+                    self.oscillator.parameters.values(),
+                ):
 
                     grad_tensor = grad(osc_prob_tensor, parameter)
                     self.binned_gradients[par_name][i_bin] = grad_tensor.numpy()
@@ -481,9 +536,16 @@ class SubSample:
                     if second_deriv:
 
                         second_deriv_tensor = grad(grad_tensor, parameter)
-                        self.binned_second_derivs[par_name][i_bin] = second_deriv_tensor.numpy()
-    
-    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False, second_deriv: bool = False) -> None:
+                        self.binned_second_derivs[par_name][
+                            i_bin
+                        ] = second_deriv_tensor.numpy()
+
+    def oscillate_events(
+        self,
+        progress_bar: bool = False,
+        save_gradients: bool = False,
+        second_deriv: bool = False,
+    ) -> None:
         """Calculate oscillations for each event and fill auxilary variable "osc_weight" with tensor containing oscillation weight
 
         If there is no oscillator for this subsample then the oscillation weight will just be 1
@@ -505,7 +567,7 @@ class SubSample:
         iterator = self.events
         if progress_bar:
             iterator = tqdm(self.events, desc=f"oscillatin' events [{self.label}]")
-        
+
         for event in iterator:
 
             if self.do_binned_osc_probs:
@@ -513,13 +575,16 @@ class SubSample:
                 event_e_bin = np.digitize(event.enu_true, self.osc_energy_binning)
 
                 ## check for events outside of the osc energy range
-                if event_e_bin < 0 or event_e_bin >= self.osc_energy_binning.shape[0] - 1:
+                if (
+                    event_e_bin < 0
+                    or event_e_bin >= self.osc_energy_binning.shape[0] - 1
+                ):
 
                     if self.initial_flavour == self.final_flavour:
                         event.aux_vars["osc_weight"] = 1.0
                     else:
                         event.aux_vars["osc_weight"] = 0.0
-                    
+
                     for par_name in self.oscillator.parameters.keys():
                         if save_gradients:
                             event.aux_vars[f"osc_weight_{par_name}_grad"] = 0.0
@@ -529,39 +594,61 @@ class SubSample:
                     continue
 
                 event.aux_vars["osc_weight"] = self.binned_osc_probs[event_e_bin]
-    
+
                 if save_gradients or second_deriv:
-    
+
                     for par_name in self.oscillator.parameters.keys():
-    
-                        event.aux_vars[f"osc_weight_{par_name}_grad"] = self.binned_gradients[par_name][event_e_bin]
-    
+
+                        event.aux_vars[f"osc_weight_{par_name}_grad"] = (
+                            self.binned_gradients[par_name][event_e_bin]
+                        )
+
                         if second_deriv:
-    
-                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = self.binned_second_derivs[par_name][event_e_bin]
-                            
+
+                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = (
+                                self.binned_second_derivs[par_name][event_e_bin]
+                            )
+
             else:
 
-                osc_probs = self.oscillator.calculate_osc_probs(np.array([event.enu_true]), antineutrino=self.antinu)
-                event_weight = osc_probs.get_values([0, self.initial_flavour, self.final_flavour])
+                osc_probs = self.oscillator.calculate_osc_probs(
+                    np.array([event.enu_true]), antineutrino=self.antinu
+                )
+                event_weight = osc_probs.get_values(
+                    [0, self.initial_flavour, self.final_flavour]
+                )
 
                 event.aux_vars["osc_weight"] = event_weight.numpy()
 
                 if save_gradients or second_deriv:
 
-                    for par_name, parameter in zip(self.oscillator.parameters.keys(), self.oscillator.parameters.values()):
+                    for par_name, parameter in zip(
+                        self.oscillator.parameters.keys(),
+                        self.oscillator.parameters.values(),
+                    ):
 
                         parameter_grad = grad(event_weight, parameter)
-                        
-                        event.aux_vars[f"osc_weight_{par_name}_grad"] = parameter_grad.numpy()[0]
+
+                        event.aux_vars[f"osc_weight_{par_name}_grad"] = (
+                            parameter_grad.numpy()[0]
+                        )
 
                         if second_deriv:
 
                             parameter_second_deriv = grad(parameter_grad, parameter)
 
-                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = parameter_second_deriv.numpy()[0]
+                            event.aux_vars[f"osc_weight_{par_name}_second_grad"] = (
+                                parameter_second_deriv.numpy()[0]
+                            )
 
-    def get_event_rate(self, binning: Binning, target_mass: float, pot: float, cut: typing.Callable = None, weight_var: str = None):
+    def get_event_rate(
+        self,
+        binning: Binning,
+        target_mass: float,
+        pot: float,
+        cut: typing.Callable = None,
+        weight_var: str = None,
+    ):
 
         data_list = []
 
@@ -581,7 +668,9 @@ class SubSample:
         ## caclulate oscillation weights if needed
         osc_weights = np.ones((np.sum(not_nan)))
         if self.oscillator is not None:
-            osc_probs = self.oscillator.calculate_osc_probs(energies[not_nan], antineutrino=self.antinu)
+            osc_probs = self.oscillator.calculate_osc_probs(
+                energies[not_nan], antineutrino=self.antinu
+            )
             osc_weights = osc_probs.numpy()[:, self.initial_flavour, self.final_flavour]
 
         ## if weight variable specified make weight array
@@ -592,9 +681,14 @@ class SubSample:
             weight_array = np.ones((np.sum(not_nan)))
 
         ## now make the histogram
-        hist, _ = np.histogramdd([data[not_nan] for data in data_list], bins = binning.bins, weights = osc_weights * weight_array)
+        hist, _ = np.histogramdd(
+            [data[not_nan] for data in data_list],
+            bins=binning.bins,
+            weights=osc_weights * weight_array,
+        )
 
         return hist * self.get_event_scaling(target_mass, pot)
+
 
 class Sample:
 
@@ -603,48 +697,62 @@ class Sample:
         binning: Binning,
         subsamples: typing.List[SubSample],
         parameters: Parameters,
-        name: str
+        name: str,
     ):
 
-        self.name: str                          = name
-        self.n_dims: int                        = binning.n_dims
-        self.binning: Binning                   = binning
+        self.name: str = name
+        self.n_dims: int = binning.n_dims
+        self.binning: Binning = binning
         self.subsamples: typing.List[SubSample] = subsamples
         self.parameters: typing.List[SubSample] = parameters
-        
+
         self.events: typing.List[Event] = []
         for subsample in self.subsamples:
             self.events += subsample.events
 
-    def oscillate_events(self, progress_bar: bool = False, save_gradients: bool = False) -> None:
+    def oscillate_events(
+        self, progress_bar: bool = False, save_gradients: bool = False
+    ) -> None:
         """Calculate oscillations for each subsample
 
         Just calls SubSample.oscillate_events() on each subsample
         """
 
         for subsample in self.subsamples:
-            subsample.oscillate_events(progress_bar=progress_bar, save_gradients=save_gradients)
+            subsample.oscillate_events(
+                progress_bar=progress_bar, save_gradients=save_gradients
+            )
 
-    def apply_selection(self, selection: SelectionBase, progress_bar: bool = False) -> 'Sample':
+    def apply_selection(
+        self, selection: SelectionBase, progress_bar: bool = False
+    ) -> "Sample":
 
         new_subsamples = []
         for subsample in self.subsamples:
 
-            new_subsample = subsample.apply_selection(selection=selection, progress_bar=progress_bar)
+            new_subsample = subsample.apply_selection(
+                selection=selection, progress_bar=progress_bar
+            )
             new_subsamples.append(new_subsample)
 
         new_sample = Sample(
-            binning = self.binning,
-            subsamples = new_subsamples,
-            parameters = self.parameters,
-            name = f'{self.name} [{selection.name}]'
+            binning=self.binning,
+            subsamples=new_subsamples,
+            parameters=self.parameters,
+            name=f"{self.name} [{selection.name}]",
         )
 
         return new_sample
 
-    
-    def imshow(self, axis, data_override: np.array, binning: Binning = None, z_label: str = None, **imshow_args):
-        
+    def imshow(
+        self,
+        axis,
+        data_override: np.array,
+        binning: Binning = None,
+        z_label: str = None,
+        **imshow_args,
+    ):
+
         if binning is None:
             binning = self.binning
 
@@ -652,26 +760,30 @@ class Sample:
 
         dat = data_override
 
-        mappable = axis.pcolormesh(binning.bins[0], binning.bins[1], dat.T, **imshow_args)
+        mappable = axis.pcolormesh(
+            binning.bins[0], binning.bins[1], dat.T, **imshow_args
+        )
 
         cbar = plt.colorbar(mappable)
         if z_label is None:
-            cbar.set_label(f"N Events / {self.parameters.pot:.2E} POT / {self.parameters.target_mass:.2E} kg")
+            cbar.set_label(
+                f"N Events / {self.parameters.pot:.2E} POT / {self.parameters.target_mass:.2E} kg"
+            )
         else:
             cbar.set_label(z_label)
-                
+
         axis.set_title(f"{self.name}")
 
         plt.xlabel(binning.variables[0])
         plt.ylabel(binning.variables[1])
 
     def get_event_rates(
-            self,
-            binning: Binning = None,
-            keep_zero = True,
-            cut: typing.Callable = None,
-            weight_var: str = None
-        ):
+        self,
+        binning: Binning = None,
+        keep_zero=True,
+        cut: typing.Callable = None,
+        weight_var: str = None,
+    ):
 
         if binning is None:
             binning = self.binning
@@ -681,21 +793,21 @@ class Sample:
         for subsample in self.subsamples:
 
             hist_total += subsample.get_event_rate(
-                binning, 
-                target_mass=self.parameters.target_mass, 
-                pot = self.parameters.pot, 
-                cut = cut,
-                weight_var = weight_var
+                binning,
+                target_mass=self.parameters.target_mass,
+                pot=self.parameters.pot,
+                cut=cut,
+                weight_var=weight_var,
             )
 
         if not keep_zero:
             hist_total[hist_total == 0] = np.nan
 
         return hist_total
-    
+
     def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
         """Get an array of event level variables for each event in this SubSample
-        
+
         returns an array containing values for each event filled with the specified variable.
         Can specify a cut which should be a function that takes an event as input and returns true or false.
         """
@@ -720,7 +832,7 @@ class Sample:
                 for var_name, var in event.aux_vars.items():
 
                     if type(var) == Tensor:
-                        
+
                         to_delete.append(var_name)
 
                 for var_name in to_delete:
@@ -733,7 +845,7 @@ class Sample:
             pickler.dump(self)
 
     @staticmethod
-    def from_file(file_name: str) -> 'Sample':
+    def from_file(file_name: str) -> "Sample":
 
         with open(file_name, "rb") as file:
 

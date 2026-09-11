@@ -1,5 +1,6 @@
 N_AVOGADRO = 6.02214076e23
 
+
 class Molecule:
 
     def __init__(self, n_nucleons: int, molar_mass: float):
@@ -11,8 +12,9 @@ class Molecule:
 
         if mass is None:
             return self.n_nucleons
-        
+
         return self.n_nucleons * mass * N_AVOGADRO / self.molar_mass
+
 
 carbon = Molecule(12, 12e-3)
 

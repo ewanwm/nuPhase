@@ -2,6 +2,7 @@ from nuPhase.event import Event
 
 import abc
 
+
 class SelectionBase(abc.ABC):
 
     def __init__(self):
@@ -13,6 +14,7 @@ class SelectionBase(abc.ABC):
 
         raise NotImplementedError()
 
+
 class SelectionNumu0PiNP0N(SelectionBase):
     """Selects events with:
     - one and only one muon with momentum > muon_threshold
@@ -22,17 +24,17 @@ class SelectionNumu0PiNP0N(SelectionBase):
     """
 
     def __init__(
-        self, 
-        muon_threshold: float, 
-        proton_threshold: float, 
-        pion_threshold: float, 
+        self,
+        muon_threshold: float,
+        proton_threshold: float,
+        pion_threshold: float,
         neutron_threshold: float,
-        n_protons: int = 0
+        n_protons: int = 0,
     ):
 
-        self.muon_threshold    = muon_threshold
-        self.proton_threshold  = proton_threshold
-        self.pion_threshold    = pion_threshold
+        self.muon_threshold = muon_threshold
+        self.proton_threshold = proton_threshold
+        self.pion_threshold = pion_threshold
         self.neutron_threshold = neutron_threshold
 
         self.name = f"numu 0pi {n_protons} proton 0 neutron"
@@ -41,9 +43,9 @@ class SelectionNumu0PiNP0N(SelectionBase):
 
     def apply(self, event: Event) -> bool:
 
-        muons_above_threshold    = 0
-        protons_above_threshold  = 0
-        pions_above_threshold    = 0
+        muons_above_threshold = 0
+        protons_above_threshold = 0
+        pions_above_threshold = 0
         neutrons_above_threshold = 0
 
         highest_mom_muon = None
@@ -59,11 +61,11 @@ class SelectionNumu0PiNP0N(SelectionBase):
 
                     elif particle.momentum > highest_mom_muon.momentum:
                         highest_mom_muon = particle
-            
+
             elif particle.pdg == 2212:
                 if particle.momentum > self.proton_threshold:
                     protons_above_threshold += 1
-                    
+
             elif particle.pdg == 2112:
                 if particle.momentum > self.neutron_threshold:
                     neutrons_above_threshold += 1
@@ -73,14 +75,16 @@ class SelectionNumu0PiNP0N(SelectionBase):
                     pions_above_threshold += 1
 
         if (
-            muons_above_threshold    == 1 and
-            protons_above_threshold  == self.n_proton and
-            pions_above_threshold    == 0 and
-            neutrons_above_threshold == 0
+            muons_above_threshold == 1
+            and protons_above_threshold == self.n_proton
+            and pions_above_threshold == 0
+            and neutrons_above_threshold == 0
         ):
 
-            event.aux_vars["p_mu"]   = highest_mom_muon.momentum
-            event.aux_vars["cos_mu"] = highest_mom_muon.three_momentum[2] / highest_mom_muon.momentum
+            event.aux_vars["p_mu"] = highest_mom_muon.momentum
+            event.aux_vars["cos_mu"] = (
+                highest_mom_muon.three_momentum[2] / highest_mom_muon.momentum
+            )
 
             return True
 
@@ -102,27 +106,27 @@ class SelectionCCInclusive(SelectionBase):
         lepton_threshold: float,
         proton_threshold: float,
         pion_threshold: float,
-        neutron_threshold: float
+        neutron_threshold: float,
     ):
 
         self.pdg_name_map = {
             lepton_name: [lepton_pdg],
-            "proton":    [2212],
-            "neutron":   [2112],  
-            "pion":      [211, -211] 
+            "proton": [2212],
+            "neutron": [2112],
+            "pion": [211, -211],
         }
 
         self.thresholds = {
             lepton_name: lepton_threshold,
-            "proton":    proton_threshold,
-            "neutron":   neutron_threshold,
-            "pion":      pion_threshold
+            "proton": proton_threshold,
+            "neutron": neutron_threshold,
+            "pion": pion_threshold,
         }
 
-        self.lepton_pdg        = lepton_pdg
-        self.lepton_threshold  = lepton_threshold
-        self.proton_threshold  = proton_threshold
-        self.pion_threshold    = pion_threshold
+        self.lepton_pdg = lepton_pdg
+        self.lepton_threshold = lepton_threshold
+        self.proton_threshold = proton_threshold
+        self.pion_threshold = pion_threshold
         self.neutron_threshold = neutron_threshold
 
         self.lepton_name = lepton_name
@@ -131,15 +135,19 @@ class SelectionCCInclusive(SelectionBase):
 
     def apply(self, event: Event) -> bool:
 
-        n_particle_map = dict(zip(
-            [name for name in self.pdg_name_map.keys()],
-            [0 for _ in range(len(self.pdg_name_map.keys()))]  
-        ))
+        n_particle_map = dict(
+            zip(
+                [name for name in self.pdg_name_map.keys()],
+                [0 for _ in range(len(self.pdg_name_map.keys()))],
+            )
+        )
 
-        highest_mom_particle_map = dict(zip(
-            [name for name in self.pdg_name_map.keys()],
-            [None for _ in range(len(self.pdg_name_map.keys()))]
-        ))
+        highest_mom_particle_map = dict(
+            zip(
+                [name for name in self.pdg_name_map.keys()],
+                [None for _ in range(len(self.pdg_name_map.keys()))],
+            )
+        )
 
         for particle in event.particles:
 
@@ -153,31 +161,35 @@ class SelectionCCInclusive(SelectionBase):
                         if highest_mom_particle_map[name] is None:
                             highest_mom_particle_map[name] = particle
 
-                        elif particle.momentum > highest_mom_particle_map[name].momentum:
+                        elif (
+                            particle.momentum > highest_mom_particle_map[name].momentum
+                        ):
                             highest_mom_particle_map[name] = particle
 
         ## fill variables
         for name, pdgs in zip(self.pdg_name_map.keys(), self.pdg_name_map.values()):
 
-            event.aux_vars[f"n_{name}"]   = n_particle_map[name]
+            event.aux_vars[f"n_{name}"] = n_particle_map[name]
 
             if highest_mom_particle_map[name] is not None:
-                event.aux_vars[f"p_{name}"]   = highest_mom_particle_map[name].momentum
-                event.aux_vars[f"cos_{name}"] = highest_mom_particle_map[name].three_momentum[2] / highest_mom_particle_map[name].momentum
+                event.aux_vars[f"p_{name}"] = highest_mom_particle_map[name].momentum
+                event.aux_vars[f"cos_{name}"] = (
+                    highest_mom_particle_map[name].three_momentum[2]
+                    / highest_mom_particle_map[name].momentum
+                )
 
             else:
-                event.aux_vars[f"p_{name}"]   = None
+                event.aux_vars[f"p_{name}"] = None
                 event.aux_vars[f"cos_{name}"] = None
 
-        ## check if there is at least one muon                
-        if (
-            n_particle_map[self.lepton_name] > 0
-        ):
+        ## check if there is at least one muon
+        if n_particle_map[self.lepton_name] > 0:
 
             return True
 
         else:
             return False
+
 
 class SelectionNumuCCInclusive(SelectionCCInclusive):
     """Selects events with:
@@ -191,17 +203,18 @@ class SelectionNumuCCInclusive(SelectionCCInclusive):
         muon_threshold: float,
         proton_threshold: float,
         pion_threshold: float,
-        neutron_threshold: float
+        neutron_threshold: float,
     ):
 
         super().__init__(
-            lepton_pdg = 13, 
-            lepton_name = "mu", 
-            lepton_threshold = muon_threshold, 
-            proton_threshold = proton_threshold, 
-            pion_threshold = pion_threshold, 
-            neutron_threshold = neutron_threshold
+            lepton_pdg=13,
+            lepton_name="mu",
+            lepton_threshold=muon_threshold,
+            proton_threshold=proton_threshold,
+            pion_threshold=pion_threshold,
+            neutron_threshold=neutron_threshold,
         )
+
 
 class SelectionNueCCInclusive(SelectionCCInclusive):
     """Selects events with:
@@ -215,17 +228,18 @@ class SelectionNueCCInclusive(SelectionCCInclusive):
         electron_threshold: float,
         proton_threshold: float,
         pion_threshold: float,
-        neutron_threshold: float
+        neutron_threshold: float,
     ):
 
         super().__init__(
-            lepton_pdg = 11, 
-            lepton_name = "e", 
-            lepton_threshold = electron_threshold, 
-            proton_threshold = proton_threshold, 
-            pion_threshold = pion_threshold, 
-            neutron_threshold = neutron_threshold
+            lepton_pdg=11,
+            lepton_name="e",
+            lepton_threshold=electron_threshold,
+            proton_threshold=proton_threshold,
+            pion_threshold=pion_threshold,
+            neutron_threshold=neutron_threshold,
         )
+
 
 class SelectionNumubarCCInclusive(SelectionCCInclusive):
     """Selects events with:
@@ -239,17 +253,18 @@ class SelectionNumubarCCInclusive(SelectionCCInclusive):
         muon_threshold: float,
         proton_threshold: float,
         pion_threshold: float,
-        neutron_threshold: float
+        neutron_threshold: float,
     ):
 
         super().__init__(
-            lepton_pdg = -13, 
-            lepton_name = "mubar", 
-            lepton_threshold = muon_threshold, 
-            proton_threshold = proton_threshold, 
-            pion_threshold = pion_threshold, 
-            neutron_threshold = neutron_threshold
+            lepton_pdg=-13,
+            lepton_name="mubar",
+            lepton_threshold=muon_threshold,
+            proton_threshold=proton_threshold,
+            pion_threshold=pion_threshold,
+            neutron_threshold=neutron_threshold,
         )
+
 
 class SelectionNuebarCCInclusive(SelectionCCInclusive):
     """Selects events with:
@@ -263,17 +278,18 @@ class SelectionNuebarCCInclusive(SelectionCCInclusive):
         electron_threshold: float,
         proton_threshold: float,
         pion_threshold: float,
-        neutron_threshold: float
+        neutron_threshold: float,
     ):
 
         super().__init__(
-            lepton_pdg = -11, 
-            lepton_name = "ebar", 
-            lepton_threshold = electron_threshold, 
-            proton_threshold = proton_threshold, 
-            pion_threshold = pion_threshold, 
-            neutron_threshold = neutron_threshold
+            lepton_pdg=-11,
+            lepton_name="ebar",
+            lepton_threshold=electron_threshold,
+            proton_threshold=proton_threshold,
+            pion_threshold=pion_threshold,
+            neutron_threshold=neutron_threshold,
         )
+
 
 class SelectionNue0PiNP0N(SelectionBase):
     """Selects events with:
@@ -284,18 +300,18 @@ class SelectionNue0PiNP0N(SelectionBase):
     """
 
     def __init__(
-        self, 
-        electron_threshold: float, 
-        proton_threshold: float, 
-        pion_threshold: float, 
+        self,
+        electron_threshold: float,
+        proton_threshold: float,
+        pion_threshold: float,
         neutron_threshold: float,
-        n_protons: int = 0
+        n_protons: int = 0,
     ):
 
         self.electron_threshold = electron_threshold
-        self.proton_threshold   = proton_threshold
-        self.pion_threshold     = pion_threshold
-        self.neutron_threshold  = neutron_threshold
+        self.proton_threshold = proton_threshold
+        self.pion_threshold = pion_threshold
+        self.neutron_threshold = neutron_threshold
 
         self.name = f"nue 0pi {n_protons} proton 0 neutron"
 
@@ -304,9 +320,9 @@ class SelectionNue0PiNP0N(SelectionBase):
     def apply(self, event: Event) -> bool:
 
         electrons_above_threshold = 0
-        protons_above_threshold   = 0
-        pions_above_threshold     = 0
-        neutrons_above_threshold  = 0
+        protons_above_threshold = 0
+        pions_above_threshold = 0
+        neutrons_above_threshold = 0
 
         highest_mom_electron = None
 
@@ -321,12 +337,11 @@ class SelectionNue0PiNP0N(SelectionBase):
                         highest_mom_electron = particle
                     elif particle.momentum > highest_mom_electron.momentum:
                         highest_mom_electron = particle
-                
-            
+
             elif particle.pdg == 2212:
                 if particle.momentum > self.proton_threshold:
                     protons_above_threshold += 1
-                    
+
             elif particle.pdg == 2112:
                 if particle.momentum > self.neutron_threshold:
                     neutrons_above_threshold += 1
@@ -336,19 +351,22 @@ class SelectionNue0PiNP0N(SelectionBase):
                     pions_above_threshold += 1
 
         if (
-            electrons_above_threshold == 1 and
-            protons_above_threshold   == self.n_proton and
-            pions_above_threshold     == 0 and
-            neutrons_above_threshold  == 0
+            electrons_above_threshold == 1
+            and protons_above_threshold == self.n_proton
+            and pions_above_threshold == 0
+            and neutrons_above_threshold == 0
         ):
 
-            event.aux_vars["p_e"]   = highest_mom_electron.momentum
-            event.aux_vars["cos_e"] = highest_mom_electron.three_momentum[2] / highest_mom_electron.momentum
+            event.aux_vars["p_e"] = highest_mom_electron.momentum
+            event.aux_vars["cos_e"] = (
+                highest_mom_electron.three_momentum[2] / highest_mom_electron.momentum
+            )
 
             return True
 
         else:
             return False
+
 
 class SelectionNue0Pi0P(SelectionBase):
     """Selects events with:
@@ -358,23 +376,20 @@ class SelectionNue0Pi0P(SelectionBase):
     """
 
     def __init__(
-        self, 
-        electron_threshold: float, 
-        proton_threshold: float, 
-        pion_threshold: float
+        self, electron_threshold: float, proton_threshold: float, pion_threshold: float
     ):
 
         self.electron_threshold = electron_threshold
-        self.proton_threshold  = proton_threshold
-        self.pion_threshold    = pion_threshold
+        self.proton_threshold = proton_threshold
+        self.pion_threshold = pion_threshold
 
         self.name = "nue 0pi 0proton"
 
     def apply(self, event: Event) -> bool:
 
         electrons_above_threshold = 0
-        protons_above_threshold   = 0
-        pions_above_threshold     = 0
+        protons_above_threshold = 0
+        pions_above_threshold = 0
 
         highest_mom_electron = None
 
@@ -388,28 +403,31 @@ class SelectionNue0Pi0P(SelectionBase):
                     highest_mom_electron = particle
                 elif particle.momentum > highest_mom_electron.momentum:
                     highest_mom_electron = particle
-            
+
             elif particle.pdg == 2212:
                 if particle.momentum > self.proton_threshold:
                     protons_above_threshold += 1
-                    
+
             elif particle.pdg in [211, -211, 111]:
                 if particle.momentum > self.pion_threshold:
                     pions_above_threshold += 1
 
         if (
-            electrons_above_threshold == 1 and
-            protons_above_threshold   == 0 and
-            pions_above_threshold     == 0
+            electrons_above_threshold == 1
+            and protons_above_threshold == 0
+            and pions_above_threshold == 0
         ):
 
-            event.aux_vars["p_e"]   = highest_mom_electron.momentum
-            event.aux_vars["cos_e"] = highest_mom_electron.three_momentum[2] / highest_mom_electron.momentum
-            
+            event.aux_vars["p_e"] = highest_mom_electron.momentum
+            event.aux_vars["cos_e"] = (
+                highest_mom_electron.three_momentum[2] / highest_mom_electron.momentum
+            )
+
             return True
 
         else:
             return False
+
 
 class SelectionNumu0Pi0P(SelectionBase):
     """Selects events with:
@@ -419,23 +437,20 @@ class SelectionNumu0Pi0P(SelectionBase):
     """
 
     def __init__(
-        self, 
-        muon_threshold: float, 
-        proton_threshold: float, 
-        pion_threshold: float
+        self, muon_threshold: float, proton_threshold: float, pion_threshold: float
     ):
 
         self.muon_threshold = muon_threshold
-        self.proton_threshold  = proton_threshold
-        self.pion_threshold    = pion_threshold
+        self.proton_threshold = proton_threshold
+        self.pion_threshold = pion_threshold
 
         self.name = "numu 0pi 0proton"
 
     def apply(self, event: Event) -> bool:
 
-        muons_above_threshold     = 0
-        protons_above_threshold   = 0
-        pions_above_threshold     = 0
+        muons_above_threshold = 0
+        protons_above_threshold = 0
+        pions_above_threshold = 0
 
         highest_mom_muon = None
 
@@ -444,29 +459,31 @@ class SelectionNumu0Pi0P(SelectionBase):
             if abs(particle.pdg) == 13:
                 if particle.momentum > self.muon_threshold:
                     muons_above_threshold += 1
-                    
+
                     if highest_mom_muon is None:
                         highest_mom_muon = particle
 
                     elif particle.momentum > highest_mom_muon.momentum:
                         highest_mom_muon = particle
-            
+
             elif particle.pdg == 2212:
                 if particle.momentum > self.proton_threshold:
                     protons_above_threshold += 1
-                    
+
             elif particle.pdg in [211, -211, 111]:
                 if particle.momentum > self.pion_threshold:
                     pions_above_threshold += 1
 
         if (
-            muons_above_threshold     == 1 and
-            protons_above_threshold   == 0 and
-            pions_above_threshold     == 0
+            muons_above_threshold == 1
+            and protons_above_threshold == 0
+            and pions_above_threshold == 0
         ):
 
-            event.aux_vars["p_mu"]   = highest_mom_muon.momentum
-            event.aux_vars["cos_mu"] = highest_mom_muon.three_momentum[2] / highest_mom_muon.momentum
+            event.aux_vars["p_mu"] = highest_mom_muon.momentum
+            event.aux_vars["cos_mu"] = (
+                highest_mom_muon.three_momentum[2] / highest_mom_muon.momentum
+            )
 
             return True
 

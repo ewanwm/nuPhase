@@ -1,4 +1,3 @@
-
 def strip_file_extension(file_name: str, extension: str) -> str:
 
     out_file = str(file_name)
