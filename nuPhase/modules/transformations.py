@@ -141,7 +141,7 @@ class CalculateFisherInfo:
                 fig.clear()
 
                 plt.stairs(subsample.binned_osc_probs, subsample.osc_energy_binning)
-                plt.title(f"{subsample.label} Binned Oscillations")
+                plt.title(f"{subsample.name} Binned Oscillations")
                 plt.xlabel("Enu [GeV]")
 
                 self._pdf.savefig(fig)
@@ -153,7 +153,7 @@ class CalculateFisherInfo:
                         subsample.binned_gradients[par_name],
                         subsample.osc_energy_binning,
                     )
-                    plt.title(f"{subsample.label} Binned {par_name} Gradients")
+                    plt.title(f"{subsample.name} Binned {par_name} Gradients")
                     plt.xlabel("Enu [GeV]")
 
                     self._pdf.savefig(fig)

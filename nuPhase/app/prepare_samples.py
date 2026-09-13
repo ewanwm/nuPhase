@@ -3,7 +3,7 @@ from nuPhase.materials import carbon, oxygen, water
 from nuPhase.sample import (
     Sample,
     SubSample,
-    Parameters,
+    SubSampleParameters,
     Binning,
     NuFlavour,
     NuisanceFile,
@@ -102,8 +102,8 @@ def main():
     ]
     output_file: str = strip_file_extension(args.output, "pdf")
 
-    nd_parameters = Parameters(args.pot, target_material, args.nd_mass)
-    fd_parameters = Parameters(args.pot, target_material, args.fd_mass)
+    nd_parameters = SubSampleParameters(args.pot, target_material, args.nd_mass)
+    fd_parameters = SubSampleParameters(args.pot, target_material, args.fd_mass)
 
     fd_enu_edges = np.array([*np.linspace(0.2, 1.2, 10), 2.0])
     fd_cos_edges = np.array([-1.0, *np.linspace(0.0, 1.0, 10)])

@@ -143,7 +143,7 @@ class BasicAnalysis:
 
                 count /= bin_widths / 0.05
 
-                plt.stairs(count, bin_edges, label=subsample.label)
+                plt.stairs(count, bin_edges, label=subsample.name)
 
             plt.legend()
             plt.xlabel("neutrino energy [GeV]")
@@ -188,7 +188,7 @@ class BasicAnalysis:
 
                 plt.legend()
                 plt.xlabel(f"Enu_true")
-                plt.title(f"{subsample.label} Xsec")
+                plt.title(f"{subsample.name} Xsec")
                 plt.ylabel(f"XSec [1 / cm^2 / Nucleon]")
                 self._pdf.savefig(fig)
 

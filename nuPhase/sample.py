@@ -20,6 +20,8 @@ from tqdm import tqdm
 
 
 class NuFlavour(IntEnum):
+    """Neutrino flavours
+    """
 
     electron = 0
     muon = 1
@@ -34,35 +36,66 @@ class Binning:
         variables: typing.Tuple[str],
         n_bins: typing.Tuple[int] = None,
         ranges: typing.Tuple[typing.Tuple[float]] = None,
-        bins: typing.List[np.array] = None,
+        bin_edges: typing.List[np.array] = None,
     ):
+        """Create a new binning
 
-        self.variables = variables
-        self.n_dims = len(variables)
+        Can provide *either* n_bins and ranges - then the binning will be `n_bins` evenly spaced bins between lower and upper limits defined by `ranges`
 
-        if bins is None:
-            assert (
+        *or*
+
+        bin_edges, then the binning will be defined by those
+
+        :param variables: Names of variables in the binning
+        :type variables: typing.Tuple[str]
+        :param n_bins: number of bins, should provide one entry for each variable, defaults to None
+        :type n_bins: typing.Tuple[int], optional
+        :param ranges: Ranges of binning, should provide one tuple for each entry representing (min_value, max_value), defaults to None
+        :type ranges: typing.Tuple[typing.Tuple[float]], optional
+        :param bin_edges: _description_, defaults to None
+        :type bin_edges: typing.List[np.array], optional
+        """
+
+        ## check user has provided valid options
+        if bin_edges is None:
+
+            if n_bins is not None or ranges is not None:
+
+                raise ValueError("Should provide *either* bin_eges, or n_bins and ranges")
+
+        self.variables: typing.List[str] = variables
+        self.n_dims: int = len(variables)
+
+        self.bin_edges: typing.List[np.array] = None
+        self.n_bins: typing.List[int] = None
+        self.ranges: typing.Tuple[typing.Tuple[float]] = None
+
+        if bin_edges is None:
+            if not (
                 len(variables) == len(n_bins) == len(ranges)
-            ), f"Bad binning! lenght of variables ({len(variables)}) must be equal to length of n_bins ({len(n_bins)} and ranges ({len(ranges)})!!!"
+            ):
+                raise ValueError(f"Bad binning! lenght of variables ({len(variables)}) must be equal to length of n_bins ({len(n_bins)} and ranges ({len(ranges)})!!!")
 
             self.n_bins = n_bins
             self.ranges = ranges
 
-            self.bins = []
+            self.bin_edges = []
             for var, n, range in zip(variables, n_bins, ranges):
 
                 assert len(range) == 2, f"bad range for var {var}, must be (low, up)"
 
-                self.bins.append(np.linspace(range[0], range[1], n + 1))
+                self.bin_edges.append(np.linspace(range[0], range[1], n + 1))
 
         else:
 
-            assert (
-                len(bins) == self.n_dims
-            ), f"bad bins! must have same number of dimensions as number of variables!! was {len(bins)} vs {self.n_dims}"
-            self.bins = bins
-            self.n_bins = [b.shape[0] - 1 for b in bins]
-            self.ranges = [(b[0], b[-1]) for b in bins]
+            if not (
+                len(bin_edges) == self.n_dims
+            ):
+                raise ValueError(f"bad bins! must have same number of dimensions as number of variables!! was {len(bin_edges)} vs {self.n_dims}")
+
+            self.bin_edges = bin_edges
+            self.n_bins = [b.shape[0] - 1 for b in bin_edges]
+            self.ranges = [(b[0], b[-1]) for b in bin_edges]
 
     def __eq__(self, other):
 
@@ -76,7 +109,7 @@ class Binning:
             if myvar != othervar:
                 return False
 
-        for mybins, otherbins in zip(self.bins, other.bins):
+        for mybins, otherbins in zip(self.bin_edges, other.bin_edges):
             if not np.all(mybins == otherbins):
                 return False
 
@@ -85,6 +118,13 @@ class Binning:
     def digitize(
         self, values: typing.Union[typing.List[float], float]
     ) -> typing.List[int]:
+        """Find which bins some data point falls into
+
+        :param values: The coordinates of the data point. Should be an array with one entry for each dimension of the binning
+        :type values: typing.Union[typing.List[float], float]
+        :return: The indices of the bins the provided values fall into, one entry for each dimension
+        :rtype: typing.List[int]
+        """
 
         _values = values
         n_values = None
@@ -104,34 +144,64 @@ class Binning:
 
         for i_val in range(n_values):
 
-            bin_indices.append(np.digitize(_values[i_val], self.bins[i_val]))
+            bin_indices.append(np.digitize(_values[i_val], self.bin_edges[i_val]))
 
         return bin_indices
 
-    def get_bin_edges(self, variable: str = None):
+    def get_bin_edges(self, variable: str = None) -> typing.List[np.array]:
+        """
+        :param variable: If provided, will return the bin edges for one specific variable - otherwise returns list of bin edges for all variables, defaults to None
+        :type variable: str, optional
+        :raises ValueError: If the specified variable does not exist in this binning
+        :return: The bin edges
+        :rtype: typing.List[np.array]
+        """
 
         if variable is None:
-            return self.bins
+            return self.bin_edges
 
         else:
+            if variable not in self.variables:
+                raise ValueError(f"variable {variable} does not exist in this binning. (have {self.variables})")
+            
             i_var = self.variables.index(variable)
-            return self.bins[i_var]
+            return self.bin_edges[i_var]
 
-    def get_n_bins(self, variable: str = None):
+    def get_n_bins(self, variable: str = None) -> typing.List[int]:
+        """
+        :param variable: If provided, will return the number of bins for one specific variable - otherwise returns list of number of bins for all variables, defaults to None
+        :type variable: str, optional
+        :raises ValueError: If the specified variable does not exist in this binning
+        :return: The number of bins
+        :rtype: typing.List[int]
+        """
 
         if variable is None:
             return self.n_bins
 
         else:
+            if variable not in self.variables:
+                raise ValueError(f"variable {variable} does not exist in this binning. (have {self.variables})")
+            
             i_var = self.variables.index(variable)
             return self.n_bins[i_var]
 
-    def get_range(self, variable: str = None):
+    def get_range(self, variable: str = None) -> typing.Tuple[typing.Tuple[float]]:
+        """
+        :param variable: If provided, will return the range for one specific variable - otherwise returns list of ranges for all variables, defaults to None
+        :type variable: str, optional
+        :raises ValueError: If the specified variable does not exist in this binning
+        :return: The number of bins
+        :rtype: typing.Tuple[typing.Tuple(float)]
+        """
 
         if variable is None:
             return self.ranges
 
         else:
+            if variable not in self.variables:
+                raise ValueError(f"variable {variable} does not exist in this binning. (have {self.variables})")
+            
             i_var = self.variables.index(variable)
             return self.ranges[i_var]
 
@@ -165,7 +235,11 @@ class Binning:
         return ret
 
     def get_2d_projections(self) -> typing.List["Binning"]:
-        """Get all possible 2D projections for this binning"""
+        """Get all possible 2D projections for this binning
+        
+        :return: Projected binnings
+        :rtype: typing.List["Binning"]
+        """
 
         ret = []
 
@@ -180,7 +254,11 @@ class Binning:
         return ret
 
     def get_1d_projections(self) -> typing.List["Binning"]:
-        """Get all 1D projections for this binning"""
+        """Get all 1D projections for this binning
+
+        :return: Projected binnings
+        :rtype: typing.List["Binning"]
+        """
 
         ret = []
 
@@ -191,7 +269,9 @@ class Binning:
         return ret
 
 
-class Parameters:
+class SampleParameters:
+    """Holds sample parameters
+    """
 
     def __init__(
         self,
@@ -199,6 +279,14 @@ class Parameters:
         target_material: Molecule,
         target_mass: float,
     ):
+        """
+        :param pot: Desired POT
+        :type pot: float
+        :param target_material: Desired target material
+        :type target_material: Molecule
+        :param target_mass: Desired target mass (in kg)
+        :type target_mass: float
+        """
 
         self.pot: float = pot
         self.target_material: Molecule = target_material
@@ -209,8 +297,14 @@ class NuisanceFile:
     """Little convenience class for accessing data in nuisance files"""
 
     def __init__(self, file_name: str, pre_selection: str = None):
+        """
+        :param file_name: The path to the nuisance file to be read
+        :type file_name: str
+        :param pre_selection: ROOT style selection to apply when reading the file e.g. (MODE==1) to read only CCQE events - maybe useful to speed up large file reading if you are interested only in a subset of events, defaults to None
+        :type pre_selection: str, optional
+        """
 
-        self.pre_selection = pre_selection
+        self.pre_selection: str = pre_selection
 
         with uproot.open(file_name) as file:
 
@@ -228,24 +322,47 @@ class NuisanceFile:
 
         return self._data[key]
 
-    def get_arrays(self, keys: typing.List[str]):
+    def get_arrays(self, keys: typing.List[str]) -> np.ndarray:
+        """Read array of branch values from the file
+
+        :param keys: The names of the branches to be read
+        :type keys: typing.List[str]
+        :return: array of values - one "row" for each file entry
+        :rtype: np.ndarray
+        """
 
         return self._data.arrays(keys, self.pre_selection, library="np")
 
-    def get_array(self, key: str):
+    def get_array(self, key: str) -> np.ndarray:
+        """Read array of values for a single branch from the file
+
+        :param key: The names of the branch to be read
+        :type key: str
+        :return: array of values - one "row" for each file entry
+        :rtype: np.ndarray
+        """
 
         return self._data.arrays(key, self.pre_selection, library="np")[key]
 
-    def keys(self):
+    def keys(self) -> typing.List[str]:
+        """Get the available keys in this file
+
+        :return: available keys
+        :rtype: typing.List[str]
+        """
 
         return self._data.keys()
 
 
 class SubSample:
+    """Represents a subsample of events
+
+    Could be e.g. a single oscillation channel
+    """
 
     def __init__(
         self,
-        label: str,
+        name: str,
         target_material: Molecule,
         initial_flavour: NuFlavour,
         final_flavour: NuFlavour,
@@ -255,8 +372,28 @@ class SubSample:
         osc_energy_binning: np.array = np.linspace(0.0, 5.0, 1000),
         antineutrino: bool = False,
     ):
+        """
+        :param name: A name for the subsample - will be used in plots and printouts
+        :type name: str
+        :param target_material: _description_
+        :type target_material: Molecule
+        :param initial_flavour: _description_
+        :type initial_flavour: NuFlavour
+        :param final_flavour: _description_
+        :type final_flavour: NuFlavour
+        :param oscillator: _description_, defaults to None
+        :type oscillator: OscillationCalculator, optional
+        :param base_pot: _description_, defaults to 1e21
+        :type base_pot: _type_, optional
+        :param do_binned_osc_probs: _description_, defaults to True
+        :type do_binned_osc_probs: bool, optional
+        :param osc_energy_binning: _description_, defaults to np.linspace(0.0, 5.0, 1000)
+        :type osc_energy_binning: np.array, optional
+        :param antineutrino: _description_, defaults to False
+        :type antineutrino: bool, optional
+        """
 
-        self.label: str = label
+        self.name: str = name
         self.base_pot: float = base_pot
         self.target_material: Molecule = target_material
 
@@ -330,7 +467,7 @@ class SubSample:
         if progress_bar:
             iterable = tqdm(
                 range(n_events_to_read),
-                desc=f"Reading events for subsample {self.label}",
+                desc=f"Reading events for subsample {self.name}",
             )
 
         for i_event in iterable:
@@ -361,7 +498,7 @@ class SubSample:
         """
 
         new_subsample = SubSample(
-            label=self.label,
+            name=self.name,
             target_material=self.target_material,
             initial_flavour=self.initial_flavour,
             final_flavour=self.final_flavour,
@@ -480,7 +617,7 @@ class SubSample:
         iterator = self.events
         if progress_bar:
             iterator = tqdm(
-                self.events, desc=f"applying [{selection.name}] to {self.label}"
+                self.events, desc=f"applying [{selection.name}] to {self.name}"
             )
 
         for event in iterator:
@@ -566,7 +703,7 @@ class SubSample:
 
         iterator = self.events
         if progress_bar:
-            iterator = tqdm(self.events, desc=f"oscillatin' events [{self.label}]")
+            iterator = tqdm(self.events, desc=f"oscillatin' events [{self.name}]")
 
         for event in iterator:
 
@@ -683,7 +820,7 @@ class SubSample:
         ## now make the histogram
         hist, _ = np.histogramdd(
             [data[not_nan] for data in data_list],
-            bins=binning.bins,
+            bins=binning.bin_edges,
             weights=osc_weights * weight_array,
         )
 
@@ -696,7 +833,7 @@ class Sample:
         self,
         binning: Binning,
         subsamples: typing.List[SubSample],
-        parameters: Parameters,
+        parameters: SampleParameters,
         name: str,
     ):
 
@@ -761,7 +898,7 @@ class Sample:
         dat = data_override
 
         mappable = axis.pcolormesh(
-            binning.bins[0], binning.bins[1], dat.T, **imshow_args
+            binning.bin_edges[0], binning.bin_edges[1], dat.T, **imshow_args
         )
 
         cbar = plt.colorbar(mappable)
