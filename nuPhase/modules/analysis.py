@@ -17,18 +17,12 @@ class UnconstrainableNueAnalysis:
         self,
         out_file_name: str,
         interaction_space: Binning,
-        nd_numu: Sample,
-        fd_nue: Sample,
-        nd_nue: Sample = None,
+        nd_samples: typing.List[Sample],
+        fd_samples: typing.List[Sample]
     ):
 
-        binning_check = nd_numu.binning == fd_nue.binning
-        if nd_nue is not None:
-            binning_check = binning_check and nd_numu.binning == nd_nue.binning
-
-        self.nd_numu: Sample = nd_numu
-        self.nd_nue: Sample = nd_nue
-        self.fd_nue: Sample = fd_nue
+        self.nd_samples: typing.List[Sample] = nd_samples
+        self.fd_samples: typing.List[Sample] = fd_samples
 
         self.interaction_space: Binning = interaction_space
 
@@ -36,7 +30,7 @@ class UnconstrainableNueAnalysis:
 
     def run(self):
 
-        for sample in [self.nd_numu, self.nd_nue, self.fd_nue]:
+        for sample in [*self.nd_samples, *self.fd_samples]:
             if sample is not None:
 
                 fig, ax = plt.subplots()
@@ -53,33 +47,21 @@ class UnconstrainableNueAnalysis:
 
                 fig.clear()
 
-        fig, ax = plt.subplots()
+        for fd_sample in self.fd_samples:
 
-        self.fd_nue.imshow(
-            ax,
-            binning=self.interaction_space,
-            data_override=self.get_unconstrained(
-                nd_sample=self.nd_numu, fd_sample=self.fd_nue
-            ),
-        )
-        ax.set_title("FD nue Unconstrained by ND Numu")
-        self._pdf.savefig(fig)
+            for nd_sample in self.nd_samples:
 
-        fig.clear()
+                fig, ax = plt.subplots()
 
-        if self.nd_nue:
-
-            ax = fig.subplots()
-            self.fd_nue.imshow(
-                ax,
-                binning=self.interaction_space,
-                data_override=self.get_unconstrained(
-                    nd_sample=self.nd_nue, fd_sample=self.fd_nue
-                ),
-            )
-
-            ax.set_title("FD nue Unconstrained by ND Nue")
-            self._pdf.savefig(fig)
+                fd_sample.imshow(
+                    ax,
+                    binning=self.interaction_space,
+                    data_override=self.get_unconstrained(
+                        nd_sample=nd_sample, fd_sample=fd_sample
+                    ),
+                )
+                ax.set_title(f"{fd_sample.name} Unconstrained by\n{nd_sample.name}")
+                self._pdf.savefig(fig)
 
         self._pdf.close()
 
@@ -157,6 +139,9 @@ class BasicAnalysis:
             for subsample in sample.subsamples:
 
                 count, bin_edges = subsample.flux_hist
+                bin_widths = bin_edges[1:] - bin_edges[:-1]
+
+                count /= bin_widths / 0.05
 
                 plt.stairs(count, bin_edges, label=subsample.label)
 
@@ -190,19 +175,19 @@ class BasicAnalysis:
                     all_cc_codes += codes
 
                     enu = subsample.get_array(
-                        "Enu_true", cut=lambda event: event.mode in codes
+                        "Enu_true", cut=lambda event: abs(event.mode) in codes
                     )
 
                     xsec = (
-                        np.histogram(enu, bins=binning.bins[0])[0]
-                        * subsample.get_xsec_weight()
+                        np.histogram(enu, bins=subsample.flux_binning.bins[0])[0]
+                        * subsample.get_xsec_weight() * subsample.get_integrated_flux() / subsample.flux_hist[0]
                     )
 
                     ## make basic flux plot
-                    plt.stairs(xsec, binning.bins[0], label=mode)
+                    plt.stairs(xsec, subsample.flux_binning.bins[0], label=mode)
 
                 plt.legend()
-                plt.xlabel(f"{binning.variables[0]}")
+                plt.xlabel(f"Enu_true")
                 plt.title(f"{subsample.label} Xsec")
                 plt.ylabel(f"XSec [1 / cm^2 / Nucleon]")
                 self._pdf.savefig(fig)
@@ -241,13 +226,13 @@ class BasicAnalysis:
                 all_cc_codes += codes
 
                 event_rate += sample.get_event_rates(
-                    cut=lambda event: event.mode in codes, binning=binning
+                    cut=lambda event: abs(event.mode) in codes, binning=binning
                 )
                 mode_event_rates.append(np.copy(event_rate))
 
             ## add "other"
             event_rate += sample.get_event_rates(
-                cut=lambda event: not event.mode in all_cc_codes, binning=binning
+                cut=lambda event: not abs(event.mode) in all_cc_codes, binning=binning
             )
             mode_event_rates.append(np.copy(event_rate))
 
@@ -262,7 +247,7 @@ class BasicAnalysis:
 
                 plt.stairs(
                     sample.get_event_rates(
-                        cut=lambda event: event.mode in codes, binning=binning
+                        cut=lambda event: abs(event.mode) in codes, binning=binning
                     ),
                     binning.bins[0],
                     label=mode,
@@ -288,17 +273,14 @@ class FisherInfoAnalysis:
     def __init__(
         self,
         out_file_name: str,
-        nd_numu: Sample,
-        fd_nue: Sample,
-        oscillator: OscillationCalculator,
+        nd_samples: typing.List[Sample],
+        fd_samples: typing.List[Sample],
         interaction_space: Binning,
-        nd_nue: Sample = None,
-        fd_numu: Sample = None,
     ):
 
         self._pdf = PdfPages(out_file_name)
         self._map_pdf = PdfPages(
-            strip_file_extension(out_file_name, "pdf") + "-fisher-info-by-energy.pdf"
+            strip_file_extension(out_file_name, "pdf") + "-fisher-info-map.pdf"
         )
         self._per_event_map_pdf = PdfPages(
             strip_file_extension(out_file_name, "pdf")
@@ -306,46 +288,19 @@ class FisherInfoAnalysis:
         )
         self._fig = plt.figure()
 
-        self.nd_numu = nd_numu
-        self.nd_nue = nd_nue
-        self.fd_numu = fd_numu
-        self.fd_nue = fd_nue
+        self.nd_samples = nd_samples
+        self.fd_samples = fd_samples
 
         self.interaction_space = interaction_space
 
-        self.oscillator: OscillationCalculator = oscillator
-
         ## set up fisher information maps
-        self._nue_fisher_info_map = None
-        self._numu_fisher_info_map = None
-
-        self._nue_fisher_info_map = self.make_fisher_info_map(sample=self.fd_nue)
-
-        if self.fd_numu is not None:
-            self._numu_fisher_info_map = self.make_fisher_info_map(sample=self.fd_numu)
+        self._fisher_info_maps = [ self.make_fisher_info_map(sample=sample) for sample in self.fd_samples ]
 
     def run(self):
 
-        # nd_nue_binning  = Binning(("p_ebar", "cos_ebar", "p_proton", "cos_proton", "p_pion", "cos_pion"), [50 for _ in range(6)], ranges = [(0.0, 1.0) if i % 2 == 0 else (-1.0, 1.0) for i in range(6)])
-        # nd_numu_binning = Binning(("p_mubar", "cos_mubar", "p_proton", "cos_proton", "p_pion", "cos_pion"), [50 for _ in range(6)], ranges = [(0.0, 1.0) if i % 2 == 0 else (-1.0, 1.0) for i in range(6)])
+        for nd_sample in self.nd_samples:
 
-        nd_nue_binning = Binning(
-            ("p_e", "cos_e", "p_proton", "cos_proton"),
-            [50 for _ in range(4)],
-            ranges=[(0.0, 1.0) if i % 2 == 0 else (-1.0, 1.0) for i in range(4)],
-        )
-        nd_numu_binning = Binning(
-            ("p_mu", "cos_mu", "p_proton", "cos_proton"),
-            [50 for _ in range(4)],
-            ranges=[(0.0, 1.0) if i % 2 == 0 else (-1.0, 1.0) for i in range(4)],
-        )
-
-        self.nd_numu.binning = nd_numu_binning
-        self.do_fisher_info_projection(sample=self.nd_numu, make_plots=True)
-
-        if self.nd_nue is not None:
-            self.nd_nue.binning = nd_nue_binning
-            self.do_fisher_info_projection(sample=self.nd_nue, make_plots=True)
+            self.do_fisher_info_projection(sample=nd_sample, make_plots=True)
 
         self._pdf.close()
         self._map_pdf.close()
@@ -353,7 +308,7 @@ class FisherInfoAnalysis:
 
     def do_fisher_info_projection(self, sample: Sample, make_plots: bool = False):
 
-        for parameter in self.oscillator.parameters.keys():
+        for parameter in OscillationCalculator.parameter_names:
 
             for event in sample.events:
 
@@ -369,12 +324,11 @@ class FisherInfoAnalysis:
 
                 try:
 
-                    fisher_info = self._nue_fisher_info_map[parameter][interaction_bins]
+                    fisher_info = 0.0
 
-                    if self.fd_numu is not None:
-                        fisher_info += self._numu_fisher_info_map[parameter][
-                            interaction_bins
-                        ]
+                    for map in self._fisher_info_maps:
+
+                        fisher_info += map[parameter][interaction_bins]
 
                     event.aux_vars[f"{parameter}_projected_fisher_info"] = fisher_info
 
@@ -429,8 +383,8 @@ class FisherInfoAnalysis:
     ):
 
         for sample, fisher_info_map in zip(
-            [self.fd_nue, self.fd_numu],
-            [self._nue_fisher_info_map, self._numu_fisher_info_map],
+            self.fd_samples,
+            self._fisher_info_maps,
         ):
 
             if sample is None:
@@ -461,7 +415,7 @@ class FisherInfoAnalysis:
             if avg_per_event:
                 norm_factor = sample.get_event_rates(binning=projection_binning)
 
-            for parameter_name in self.oscillator.parameters.keys():
+            for parameter_name in OscillationCalculator.parameter_names:
 
                 slice_iterator = None
                 slice_bins = None
@@ -528,7 +482,7 @@ class FisherInfoAnalysis:
 
         fisher_info_map = {}
 
-        for parameter_name in self.oscillator.parameters.keys():
+        for parameter_name in OscillationCalculator.parameter_names:
 
             fisher_info_map[parameter_name] = sample.get_event_rates(
                 binning=self.interaction_space,

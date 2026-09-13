@@ -1,30 +1,35 @@
 import nuTens as nt
 import numpy as np
 
-from nuTens import dtype, units, tensor
+from nuTens import dtype, units
 from nuTens.tensor import Tensor
 from nuTens.propagator import DPpropagator
 
 import math as m
 import typing
 
-from nuPhase.event import Event
-
 
 class OscillationCalculator:
+
+    parameter_names: typing.List[str] = [
+        "theta12",
+        "theta23",
+        "theta13",
+        "deltacp",
+        "dmsq21",
+        "dmsq32"
+    ]
 
     def __init__(
         self, baseline: float, density: float = 2.6, initialisation: str = "zeros"
     ):
 
-        self.parameters = {
-            "theta12": None,
-            "theta23": None,
-            "theta13": None,
-            "deltacp": None,
-            "dmsq21": None,
-            "dmsq32": None,
-        }
+        self.parameters: typing.Dict[str, Tensor] = dict(
+            zip(
+                self.parameter_names, 
+                [None for _ in self.parameter_names]
+            )
+        )
 
         self.density = density
         self.baseline = baseline
@@ -75,6 +80,8 @@ class OscillationCalculator:
         state = self.__dict__.copy()
         # Remove the unpicklable entries.
         del state["propagator"]
+
+        return state
 
     def _setup_propagator(self):
 
