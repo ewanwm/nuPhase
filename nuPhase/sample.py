@@ -268,8 +268,8 @@ class SubSample:
 
         ## these should be filled later
         self.events: typing.List[Event] = []
-        self._flux_hist: np.array = None
-        self._flux_binning: np.array = None
+        self.flux_hist: np.array = None
+        self.flux_binning: np.array = None
 
         ## binned oscillation stuff
         self.do_binned_osc_probs = do_binned_osc_probs
