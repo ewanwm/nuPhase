@@ -269,7 +269,7 @@ class Binning:
         return ret
 
 
-class SampleParameters:
+class SubSampleParameters:
     """Holds sample parameters
     """
 
@@ -278,6 +278,9 @@ class SampleParameters:
         pot: float,
         target_material: Molecule,
         target_mass: float,
+        initial_flavour: NuFlavour,
+        final_flavour: NuFlavour,
+        antineutrino: bool,
     ):
         """
         :param pot: Desired POT
@@ -286,11 +289,20 @@ class SampleParameters:
         :type target_material: Molecule
         :param target_mass: Desired target mass (in kg)
         :type target_mass: float
+        :param initial_flavour: The "initial" (unoscillated) flavour represented by the subsample
+        :type initial_flavour: NuFlavour
+        :param final_flavour: The "final" (oscillated) flavour represented by the subsample
+        :type final_flavour: NuFlavour
+        :param antinuetrino: Flag which should be True if the sample is in anti-neutrino mode
+        :type antineutrino: bool
         """
 
         self.pot: float = pot
         self.target_material: Molecule = target_material
         self.target_mass: float = target_mass
+        self.initial_flavour: NuFlavour = initial_flavour
+        self.final_flavour: NuFlavour = final_flavour
+        self.antinu: bool = antineutrino
 
 
 class NuisanceFile:
@@ -363,45 +375,35 @@ class SubSample:
     def __init__(
         self,
         name: str,
-        target_material: Molecule,
-        initial_flavour: NuFlavour,
-        final_flavour: NuFlavour,
+        parameters: SubSampleParameters,
         oscillator: OscillationCalculator = None,
-        base_pot=1e21,
+        base_pot: float = 1e21,
         do_binned_osc_probs: bool = True,
         osc_energy_binning: np.array = np.linspace(0.0, 5.0, 1000),
-        antineutrino: bool = False,
     ):
-        """
+        """Constructor
+        
         :param name: A name for the subsample - will be used in plots and printouts
         :type name: str
-        :param target_material: _description_
-        :type target_material: Molecule
-        :param initial_flavour: _description_
-        :type initial_flavour: NuFlavour
-        :param final_flavour: _description_
-        :type final_flavour: NuFlavour
-        :param oscillator: _description_, defaults to None
+        :param parameters: describes the parameters for this subsample
+        :type parameters: SubSampleParameters
+        :param oscillator: If supplied, this will be used to calculate oscillation probabilities, if not, no oscillations will be applied, defaults to None
         :type oscillator: OscillationCalculator, optional
-        :param base_pot: _description_, defaults to 1e21
-        :type base_pot: _type_, optional
-        :param do_binned_osc_probs: _description_, defaults to True
+        :param base_pot: The POT that was used to generate the Monte Carlo for this subsample, defaults to 1e21
+        :type base_pot: float, optional
+        :param do_binned_osc_probs: Whether to use binned oscillation probabilities for this subsample (assuming an oscillation calculator was supplied), defaults to True
         :type do_binned_osc_probs: bool, optional
-        :param osc_energy_binning: _description_, defaults to np.linspace(0.0, 5.0, 1000)
+        :param osc_energy_binning: The binning to use when calculating binned oscillation probabilities, defaults to np.linspace(0.0, 5.0, 1000)
         :type osc_energy_binning: np.array, optional
-        :param antineutrino: _description_, defaults to False
-        :type antineutrino: bool, optional
         """
+
+        ## TODO: Move the binned oscillation stuff to OscillationCalculator?
+        ## probably have binned oscillation stuff dealt with in the OscillationCalculator and move oscillation parameters to another class that could be shared between oscillationCalculator objects
 
         self.name: str = name
         self.base_pot: float = base_pot
-        self.target_material: Molecule = target_material
-
-        self.initial_flavour: NuFlavour = initial_flavour
-        self.final_flavour: NuFlavour = final_flavour
+        self.parameters: SubSampleParameters = parameters
         self.oscillator: OscillationCalculator = oscillator
-
-        self.antinu: bool = antineutrino
 
         ## these should be filled later
         self.events: typing.List[Event] = []
@@ -499,10 +501,10 @@ class SubSample:
 
         new_subsample = SubSample(
             name=self.name,
-            target_material=self.target_material,
-            initial_flavour=self.initial_flavour,
-            final_flavour=self.final_flavour,
+            parameters=self.parameters,
             base_pot=self.base_pot,
+            do_binned_osc_probs=self.do_binned_osc_probs,
+            osc_energy_binning=self.osc_energy_binning,
         )
 
         new_subsample.flux_hist = self.flux_hist
@@ -514,7 +516,6 @@ class SubSample:
         new_subsample.binned_osc_probs = self.binned_osc_probs
         new_subsample.binned_gradients = self.binned_gradients
         new_subsample.binned_second_derivs = self.binned_second_derivs
-        new_subsample.antinu = self.antinu
 
         return new_subsample
 
@@ -575,11 +576,11 @@ class SubSample:
 
         return pot / self.base_pot
 
-    def get_event_scaling(self, target_mass: float, pot: float) -> float:
+    def get_event_scaling(self) -> float:
         """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT"""
 
-        n_nucleons = self.target_material.get_n_nucleons(target_mass)
-        pot_weight = self.get_pot_weight(pot)
+        n_nucleons = self.parameters.target_material.get_n_nucleons(self.parameters.target_mass)
+        pot_weight = self.get_pot_weight(self.parameters.pot)
 
         return (
             self.integrated_flux
@@ -628,7 +629,9 @@ class SubSample:
 
         return new_subsample
 
-    def _prep_binned_osc(self, save_gradients: bool = True, second_deriv: bool = False):
+    def _prep_binned_osc(self, save_gradients: bool = True, second_deriv: bool = False) -> None:
+        """Prepare the arrays used for binned oscillation calculations
+        """
 
         assert (
             self.oscillator is not None
@@ -833,15 +836,12 @@ class Sample:
         self,
         binning: Binning,
         subsamples: typing.List[SubSample],
-        parameters: SampleParameters,
         name: str,
     ):
 
         self.name: str = name
-        self.n_dims: int = binning.n_dims
         self.binning: Binning = binning
         self.subsamples: typing.List[SubSample] = subsamples
-        self.parameters: typing.List[SubSample] = parameters
 
         self.events: typing.List[Event] = []
         for subsample in self.subsamples:
@@ -875,7 +875,6 @@ class Sample:
         new_sample = Sample(
             binning=self.binning,
             subsamples=new_subsamples,
-            parameters=self.parameters,
             name=f"{self.name} [{selection.name}]",
         )
 
@@ -904,7 +903,7 @@ class Sample:
         cbar = plt.colorbar(mappable)
         if z_label is None:
             cbar.set_label(
-                f"N Events / {self.parameters.pot:.2E} POT / {self.parameters.target_mass:.2E} kg"
+                f"N Events kg"
             )
         else:
             cbar.set_label(z_label)
@@ -931,8 +930,6 @@ class Sample:
 
             hist_total += subsample.get_event_rate(
                 binning,
-                target_mass=self.parameters.target_mass,
-                pot=self.parameters.pot,
                 cut=cut,
                 weight_var=weight_var,
             )
