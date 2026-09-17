@@ -790,15 +790,20 @@ class SubSample(SampleBase):
         return ret * scale_factor
 
     def get_xsec_weight(self) -> float:
+        """Get the fixed cross section weight that should be applied to events - this is just the fScaleFactor from the nuisance files
+        """
 
         return self.fixed_xsec_weight
 
     def get_pot_weight(self, pot: float) -> float:
+        """Get the scaling that should be applied to events to approximate event rates for some target POT
+        """
 
         return pot / self.base_pot
 
     def get_event_scaling(self) -> float:
-        """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT"""
+        """Get the scaling that should be applied to events in this sub-sample to estimate event rates assuming the given target mass and POT
+        """
 
         n_nucleons = self.parameters.target_material.get_n_nucleons(self.parameters.target_mass)
         pot_weight = self.get_pot_weight(self.parameters.pot)
@@ -871,7 +876,16 @@ class SubSample(SampleBase):
         """Calculate oscillations for each event and fill auxilary variable "osc_weight" with tensor containing oscillation weight
 
         If there is no oscillator for this subsample then the oscillation weight will just be 1
+
+        :param progress_bar: If True this will print a progress bar with info on how many events have been processed, defaults to False
+        :type progress_bar: bool, optional
+        :param save_gradients: If True, the gradient of the event weight wrt each oscillation parameter will be saved in the "osc_weight<PARAMETER NAME>_grad" aux variable, defaults to False
+        :type save_gradients: bool, optional
+        :param second_deriv: If True, the second derivative of the event weight wrt each oscillation parameter will be saved in the "osc_weight<PARAMETER NAME>_second_grad" aux variable, defaults to False
+        :type second_deriv: bool, optional
         """
+
+        ## TODO Move to OscillationCalculator along with binned oscillation stuff
 
         if self.oscillator is None:
 
@@ -966,11 +980,20 @@ class SubSample(SampleBase):
     def get_event_rate(
         self,
         binning: Binning,
-        target_mass: float,
-        pot: float,
         cut: typing.Callable = None,
         weight_var: str = None,
-    ):
+    ) -> np.ndarray:
+        """Get binned event rate for this subsample in some particular binning
+
+        :param binning: The binning to project into
+        :type binning: Binning
+        :param cut: A function describing a cut to apply to the events, defaults to None
+        :type cut: typing.Callable, optional
+        :param weight_var: The name of a variable to (stored in the "aux_vars") to apply as a weight when calculating the rates, defaults to None
+        :type weight_var: str, optional
+        :return: Array of event rates in the specified binning
+        :rtype: np.ndarray
+        """
 
         data_list = []
 
@@ -1009,7 +1032,7 @@ class SubSample(SampleBase):
             weights=osc_weights * weight_array,
         )
 
-        return hist * self.get_event_scaling(target_mass, pot)
+        return hist * self.get_event_scaling()
 
 
 class Sample(SampleBase):
