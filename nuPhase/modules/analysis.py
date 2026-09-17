@@ -92,10 +92,7 @@ class BasicAnalysis:
 
         ## make plots of the Xsecs for each sample
         for sample in self.samples:
-            for binning_1d in [
-                sample.binning.project([var]) for var in sample.binning.variables
-            ]:
-                self.make_xsec_plots(sample, binning_1d)
+            self.make_xsec_plots(sample)
 
         ## make plots of the event rates for each sample
         for sample in self.samples:
@@ -157,9 +154,8 @@ class BasicAnalysis:
         else:
             pass
 
-    def make_xsec_plots(self, sample: Sample, binning: Binning):
+    def make_xsec_plots(self, sample: Sample):
 
-        assert binning.n_dims == 1, "Can only make xsec plots for 1D binning :("
         if sample.subsamples is not None:
 
             for subsample in sample.subsamples:
@@ -178,13 +174,18 @@ class BasicAnalysis:
                         "Enu_true", cut=lambda event: abs(event.mode) in codes
                     )
 
+                    flux_bins = subsample.flux_binning.bin_edges[0]
+                    bin_widths = flux_bins[1:] - flux_bins[:-1]
+
                     xsec = (
-                        np.histogram(enu, bins=subsample.flux_binning.bins[0])[0]
+                        np.histogram(enu, bins=flux_bins)[0] / bin_widths
                         * subsample.get_xsec_weight() * subsample.get_integrated_flux() / subsample.flux_hist[0]
                     )
 
                     ## make basic flux plot
-                    plt.stairs(xsec, subsample.flux_binning.bins[0], label=mode)
+                    plt.stairs(xsec, subsample.flux_binning.bin_edges[0], label=mode)
+
+                    plt.xscale("log")
 
                 plt.legend()
                 plt.xlabel(f"Enu_true")
@@ -211,7 +212,7 @@ class BasicAnalysis:
         fig = plt.figure()
 
         event_rate = sample.get_event_rates(binning=binning)
-        plt.stairs(event_rate, binning.bins[0], label="total")
+        plt.stairs(event_rate, binning.bin_edges[0], label="total")
 
         event_rate[:] = 0.0
         mode_event_rates = []
@@ -240,7 +241,7 @@ class BasicAnalysis:
                 mode_event_rates[::-1], ["other", *cc_modes.keys()]
             ):
 
-                plt.stairs(mode_event_rate, binning.bins[0], label=mode, **stairs_args)
+                plt.stairs(mode_event_rate, binning.bin_edges[0], label=mode, **stairs_args)
 
         else:
             for mode, codes in zip(list(cc_modes.keys()), list(cc_modes.values())):
@@ -249,7 +250,7 @@ class BasicAnalysis:
                     sample.get_event_rates(
                         cut=lambda event: abs(event.mode) in codes, binning=binning
                     ),
-                    binning.bins[0],
+                    binning.bin_edges[0],
                     label=mode,
                     **stairs_args,
                 )
@@ -261,7 +262,7 @@ class BasicAnalysis:
         plt.xlabel(f"{binning.variables[0]}")
         plt.title(f"Event rate {sample.name}")
         plt.ylabel(
-            f"N Events / {sample.parameters.pot:.2E} POT / {sample.parameters.target_mass:.2E}"
+            f"N Events"
         )
         self._pdf.savefig(fig)
 
