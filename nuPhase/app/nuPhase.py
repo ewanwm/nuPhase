@@ -1,10 +1,11 @@
 from nuPhase.utils import strip_file_extension
-from nuPhase.sample import Sample, Binning
+from nuPhase.sample import Sample, Binning, SubSample, SubSampleParameters, flavour_from_name, NuisanceFile
 from nuPhase.modules.analysis import (
     FisherInfoAnalysis,
     BasicAnalysis,
     UnconstrainableNueAnalysis,
 )
+from nuPhase.materials import material_from_name
 
 from argparse import ArgumentParser
 import sys
@@ -147,6 +148,27 @@ def setup_parser():
     ## set up subcommand parsers
     subparsers = parser.add_subparsers(title = "Commands", required=True, dest="command")
 
+    ## set up subsample maker command
+    prepare_subsample_parser = subparsers.add_parser("prepare-subsample", help="'prepare' a subsample - Convert it from nuisance flattree into a nuPhase object that canbe used for further analysis")
+    prepare_subsample_parser.set_defaults(func = prepare_subsample)
+    prepare_subsample_parser.add_argument('--nuisance-file', help="The name of the input file describing the MC events", required=True, type=str)
+    prepare_subsample_parser.add_argument('--base-pot', help="The POT that was assumed when generating this subsample", required=True, type=float)
+    prepare_subsample_parser.add_argument('--target-material', help="The target material that this subsample was generated with", required=True, type=str)
+    prepare_subsample_parser.add_argument('--target-mass', help="The target mass to scale to", required=True, type=float)
+    prepare_subsample_parser.add_argument('--initial-flavour', help="The initial (unoscillated) neutrino flavour", required=True, type=str)
+    prepare_subsample_parser.add_argument('--final-flavour', help="The final (oscillated) neutrino flavour", required=True, type=str)
+    prepare_subsample_parser.add_argument('--name', help="A name for this subsample", required=True, type=str)
+    prepare_subsample_parser.add_argument('--antinu', help="The flag to declare that this subsample was generated for antinueutrino (RHC) mode", action="store_true", required=False)
+    prepare_subsample_parser.add_argument('--target-pot', help="The number of POT to scale the sample to - if not specified then the base pot will be used", required=False, default=None, type=float)
+    prepare_subsample_parser.add_argument('--max-n-events', "-n", help="Maximum number of events to read from the input file - if not specified then all will be read", required=False, default=None, type=int)
+
+    ## set up sample maker command
+    prepare_sample_parser = subparsers.add_parser("prepare-sample", help="'prepare' a sample - Combine subsamples into a single Sample object that can be passed to analysis modules")
+    prepare_sample_parser.set_defaults(func = prepare_sample)
+    prepare_sample_parser.add_argument('--subsamples', nargs='+', default=[], help="The name of the input file describing the MC events", required=True)
+    prepare_sample_parser.add_argument('--binning', help="Path to config file defining the binning for the sample", required=True, type=str)
+    prepare_sample_parser.add_argument('--name', help="Name for this sample", required=True, type=str)
+      
     ## set up fisher information command
     fisher_info_parser = subparsers.add_parser("fisher-analysis", help="Perform Fisher information based analysis - will construct fisher info map from FD samples, propagate the info through to the nd samples")
     fisher_info_parser.set_defaults(func = fisher_analysis)
@@ -187,6 +209,51 @@ def fisher_analysis(args, output_file):
         variables=["q3", "q0"], slice_var="Enu_true", avg_per_event=True
     )
     analysis.run()
+
+def prepare_subsample(args, output_file):
+
+    initial_flavour = flavour_from_name(args.initial_flavour)
+    final_flavour = flavour_from_name(args.final_flavour)
+
+    target_material = material_from_name(args.target_material)
+
+    target_pot = args.target_pot
+    if target_pot is None:
+        target_pot = args.base_pot
+
+    parameters = SubSampleParameters(
+        pot=target_pot,
+        target_material=target_material,
+        target_mass=args.target_mass,
+        initial_flavour=initial_flavour,
+        final_flavour=final_flavour,
+        antineutrino=args.antinu
+    )
+    subsample = SubSample(
+        name=args.name,
+        parameters=parameters,
+        base_pot=args.base_pot,
+    )
+
+    ## fill it with the nuisance file
+    nuisance_file = NuisanceFile(file_name=args.nuisance_file)
+    subsample.fill_from_file(nuisance_file, progress_bar=True, max_n_events=args.max_n_events)
+
+    ## save it to disk
+    subsample.to_file(output_file)
+
+def prepare_sample(args, output_file):
+
+    ## create binning object
+    binning = Binning.from_file(args.binning)
+
+    ## create sample object
+    Sample(
+        binning=binning,
+        subsamples=[SubSample.from_file(file_name) for file_name in args.subsamples],
+        name=args.name
+    ## save it to a nuPhase file
+    ).to_file(output_file)
 
 def basic_analysis(args, output_file):
 
