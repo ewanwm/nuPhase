@@ -71,7 +71,7 @@ class CalculateFisherInfo:
                     dat = fisher_info[parameter_name][...]
                     dat[dat == 0.0] = np.nan
 
-                    plt.stairs(dat, sample.binning.bins[0])
+                    plt.stairs(dat, sample.binning.bin_edges[0])
                     plt.xlabel(f"{sample.binning.variables[0]}")
                     plt.ylabel("Fisher info")
                     plt.title(f"{sample.name} {parameter_name} \nFisher Information")
@@ -83,7 +83,7 @@ class CalculateFisherInfo:
                     dat = per_event_fisher_info[...]
                     dat[dat == 0.0] = np.nan
 
-                    plt.stairs(dat, sample.binning.bins[0])
+                    plt.stairs(dat, sample.binning.bin_edges[0])
                     plt.xlabel(f"{sample.binning.variables[0]}")
                     plt.ylabel("Fisher info")
                     plt.title(
@@ -182,7 +182,7 @@ class CalculateFisherInfo:
                     if binning.n_dims == 2:
 
                         mappable = ax.pcolormesh(
-                            binning.bins[0], binning.bins[1], data.T
+                            binning.bin_edges[0], binning.bin_edges[1], data.T
                         )
 
                         ax.set_xlabel(binning.variables[0])
@@ -193,7 +193,7 @@ class CalculateFisherInfo:
 
                     elif binning.n_dims == 1:
 
-                        ax.stairs(data, binning.bins[0])
+                        ax.stairs(data, binning.bin_edges[0])
                         ax.set_xlabel(binning.variables[0])
                         ax.set_ylabel(f"{label}")
 
