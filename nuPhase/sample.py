@@ -31,6 +31,25 @@ class NuFlavour(IntEnum):
     tau = 2
 
 
+def flavour_from_name(name: str) -> NuFlavour:
+    """Get neutrino flavour enum from a name string
+
+    :param name: Neutrino flavour name (one of ["nue", "numu", "nutau"])
+    :type name: str
+    :raises ValueError: if an unknown flavour name is given
+    :return: neutrino flavour enum value
+    :rtype: NuFlavour
+    """
+
+    if name == "nue":
+        return NuFlavour.electron
+    elif name == "numu":
+        return NuFlavour.muon
+    elif name == "nutau":
+        return NuFlavour.tau
+    else:
+        raise ValueError(f"Unknown neutrino flavour name specified: {name}")
+
 class Binning:
     """Represents binning for use in analyses"""
 
