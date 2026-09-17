@@ -357,6 +357,15 @@ class SubSampleParameters:
         self.final_flavour: NuFlavour = final_flavour
         self.antinu: bool = antineutrino
 
+    def __str__(self):
+
+        ret_str = ""
+        ret_str += "SubSamplePArameters:\n"
+        for key, value in zip(self.__dict__.keys(), self.__dict__.values()):
+
+            ret_str += f"  - {key}: {value}\n"
+
+        return ret_str
 
 class NuisanceFile:
     """Little convenience class for accessing data in nuisance files
