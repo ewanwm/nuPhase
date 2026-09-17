@@ -359,7 +359,23 @@ class SubSampleParameters:
 
 
 class NuisanceFile:
-    """Little convenience class for accessing data in nuisance files"""
+    """Little convenience class for accessing data in nuisance files
+    
+    This is really just a wrapper class for accessing uproot objects.
+    To access the data stored in a file you should use the `with` keyword like:
+
+    ```
+    file = NuisanceFile(...)
+
+    with file as f:
+        ## do stuff with data stored in file
+
+    ## blablabla
+    ```
+
+    This provides a safe way of accessing the data stored in the nuisance file 
+    without consuming unnnecessary memory resources.
+    """
 
     def __init__(self, file_name: str, pre_selection: str = None):
         """
@@ -371,17 +387,40 @@ class NuisanceFile:
 
         self.pre_selection: str = pre_selection
 
-        with uproot.open(file_name) as file:
+        self.file_name = file_name
 
-            self._data = file["FlatTree_VARS"]
-            assert (
-                self._data is not None
-            ), f"No FlatTree_VARS tree in input file {file_name}! is this really a nuisance flattree???"
+        self.file = None
 
-            self.num_entries = self._data.num_entries
+        self._data = None
+        self.num_entries = None
+        self.flux_hist = None
+        self.scale_factor = None
 
-            self.flux_hist = file["FlatTree_FLUX"]
-            self.scale_factor = self.get_array("fScaleFactor")[0]
+    def __enter__(self):
+
+        self.file = uproot.open(self.file_name)
+
+        self._data = self.file["FlatTree_VARS"]
+        assert (
+            self._data is not None
+        ), f"No FlatTree_VARS tree in input file {self.file_name}! is this really a nuisance flattree???"
+
+        self.num_entries = self._data.num_entries
+
+        self.flux_hist = self.file["FlatTree_FLUX"]
+        self.scale_factor = self.get_array("fScaleFactor")[0]
+
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+
+        self.file.close()
+        self.file = None
+
+        self._data = None
+        self.num_entries = None
+        self.flux_hist = None
+        self.scale_factor = None
 
     def __getitem__(self, key: str):
 
@@ -579,19 +618,34 @@ class SubSample:
         progress_bar: bool = False,
         max_n_events: int = None,
     ) -> "SubSample":
-        """Fill this subsample with events read in from a nuisance flat tree"""
+        """Fill this subsample with events read in from a nuisance flat tree
 
-        self._get_event_info(
-            file,
-            auxilary_variables,
-            progress_bar=progress_bar,
-            max_n_events=max_n_events,
-        )
+        :param file: The path to the nuisance flat tree file
+        :type file: NuisanceFile
+        :param auxilary_variables: Values to store in the "aux_vars" (variables that are available to downstream analysis modules), defaults to ["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"]
+        :type auxilary_variables: list, optional
+        :param progress_bar: If True, will display a progress bar showing how many events have been read, defaults to False
+        :type progress_bar: bool, optional
+        :param max_n_events: Max number of events to read from the file, if None then all events will be read, defaults to None
+        :type max_n_events: int, optional
+        :return: This SubSample object
+        :rtype: SubSample
+        """
 
-        self.flux_hist = file.flux_hist.to_numpy()
-        self.flux_binning = Binning(["Enu_true"], bins=[self.flux_hist[1]])
+        ## safely open the file
+        with file as _file:
+            self._get_event_info(
+                _file,
+                auxilary_variables,
+                progress_bar=progress_bar,
+                max_n_events=max_n_events,
+            )
 
-        self.fixed_xsec_weight = file.scale_factor
+            self.flux_hist = _file.flux_hist.to_numpy()
+            self.fixed_xsec_weight = _file.scale_factor
+
+        self.flux_binning = Binning(["Enu_true"], bin_edges=[self.flux_hist[1]])
+
         self.integrated_flux = self.get_integrated_flux()
 
         return self
@@ -599,10 +653,19 @@ class SubSample:
     def get_integrated_flux(
         self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05
     ) -> float:
+        """Get the integral of the flux histogram in this SubSample
 
-        assert (
-            self.flux_hist is not None
-        ), "hmmmm, flux hist is None. Has this subsample been initialised properly????"
+        :param bin_width_normalised: if True, the bin contents will be multiplied by the bin width when taking the total. Equivalent to the "width" option in ROOT's TH1->Integral(), defaults to True
+        :type bin_width_normalised: bool, optional
+        :param scale_factor: Arbitrary scaling to apply to the flux. Default value of 1/50MeV is to account for T2K flux normalisation, defaults to 1/0.05
+        :type scale_factor: float, optional
+        :raises RuntimeError: If the flux histogram has not yet been initialised (i.e. the subsample has not been set up properly)
+        :return: The integrated flux
+        :rtype: float
+        """
+
+        if self.flux_hist is None:
+            raise RuntimeError("hmmmm, flux hist is None. Has this subsample been initialised properly????")
 
         counts, bin_edges = (
             self.flux_hist
