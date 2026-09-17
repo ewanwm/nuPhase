@@ -11,12 +11,15 @@ from nuTens import tensor
 from nuTens.tensor import Tensor
 from nuTens.autograd import grad
 
+from tqdm import tqdm
+
+import json
+import jsonschema
+
 from nuPhase.materials import Molecule
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event
 from nuPhase.modules.selection import SelectionBase
-
-from tqdm import tqdm
 
 
 class NuFlavour(IntEnum):
@@ -30,6 +33,56 @@ class NuFlavour(IntEnum):
 
 class Binning:
     """Represents binning for use in analyses"""
+
+    @staticmethod
+    def from_file(file_name: str) -> 'Binning':
+        """Create a binning object from a json config file
+
+        :param file_name: The name of the config file to read from 
+        :type file_name: str
+        :return: Binning object with variables and binning defined by the given config file
+        :rtype: Binning
+        """
+
+        with open(file_name) as json_file:
+
+            ## reat the config file
+            dat = json.load(json_file)
+
+        ## create schema for binning config
+        schema = {
+            "type": "object",
+            "properties": {
+                "binning": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "proparties": {
+                            "variable": {"type": "string"},
+                            "bins": {
+                                "type": "array"
+                            }
+                        },
+                        "required": ["variable", "bins"]
+                    }
+                }
+            }
+        }
+
+        ## validate the user provided json
+        jsonschema.validate(instance=dat, schema=schema)
+
+        ## to be filled from file 
+        variables = []
+        bins      = []
+
+        binning = dat["binning"]
+        for variable_binning in binning:
+            variables.append(variable_binning["variable"])
+            bins.append(np.array(variable_binning["bins"]))
+
+        ## create the binning object
+        return Binning(variables=variables, bin_edges=bins)
 
     def __init__(
         self,
