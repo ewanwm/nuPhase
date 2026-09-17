@@ -304,7 +304,7 @@ class Binning:
             if var not in self.variables:
                 raise ValueError(f"Variable {var} not found in binning!")
 
-        ret = Binning(_variables, bins=[self.get_bin_edges(var) for var in _variables])
+        ret = Binning(_variables, bin_edges=[self.get_bin_edges(var) for var in _variables])
 
         return ret
 
