@@ -2,6 +2,8 @@ import typing
 from enum import IntEnum
 import pickle
 from collections.abc import Iterable
+import abc
+import copy
 
 import uproot
 from matplotlib import pyplot as plt
@@ -486,7 +488,109 @@ class NuisanceFile:
         return self._data.keys()
 
 
-class SubSample:
+class SampleBase(abc.ABC):
+    """The base class for Sample and SubSample objects
+    """
+
+    def __init__(self, name: str):
+
+        ## name of the sample
+        self.name: str = name
+
+        ## events within this sample
+        self.events: typing.List[Event] = []
+        
+    def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
+        """Get an array of event level variables for each event in this sample
+
+        returns an array containing values for each event filled with the specified variable.
+        Can specify a cut which should be a function that takes an event as input and returns true or false.
+        """
+
+        values = []
+        for event in self.events:
+
+            if cut is None or cut(event):
+                values.append(event.get_var(key))
+
+        return np.array(values, dtype=float)
+
+    def apply_selection(
+        self, selection: SelectionBase, progress_bar: bool = False
+    ) -> "SubSample":
+        """Apply a selection to the events in this sample
+
+        Will return a copy of this subsapmple with only events that pass the selection in it
+        """
+
+        ## make a shallow copy of this sample
+        new_subsample = copy.copy(self)
+
+        iterator = self.events
+        if progress_bar:
+            iterator = tqdm(
+                self.events, desc=f"applying [{selection.name}] to {self.name}"
+            )
+
+        ## apply the selection
+        for event in iterator:
+
+            if selection.apply(event):
+
+                new_subsample.events.append(event)
+
+        return new_subsample
+
+    
+    def to_file(self, file_name: str, keep_tensors: bool = False) -> None:
+        """Dump this object to a file
+
+        :param file_name: path to the file to save the object to
+        :type file_name: str
+        :param keep_tensors: If True, will save Tensor objects that are stored in events. This means that differentiable quantities are preserved but the file will be a *lot* larger, defaults to False
+        :type keep_tensors: bool, optional
+        """
+
+        ## strip out tensor objects by default - they really beef up file sizes
+        if not keep_tensors:
+
+            for event in self.events:
+
+                to_delete = []
+
+                for var_name, var in event.aux_vars.items():
+
+                    if type(var) == Tensor:
+
+                        to_delete.append(var_name)
+
+                for var_name in to_delete:
+
+                    del event.aux_vars[var_name]
+
+        ## write the file
+        with open(file_name, "wb") as file:
+
+            pickler = pickle.Pickler(file)
+            pickler.dump(self)
+
+    @staticmethod
+    def from_file(file_name: str) -> "SampleBase":
+        """Create a Sample or Subsample from a file on disk
+
+        :param file_name: Path to the file
+        :type file_name: str
+        :return: The recreated sample or subsample
+        :rtype: SampleBase
+        """
+
+        with open(file_name, "rb") as file:
+
+            unpickler = pickle.Unpickler(file)
+            return unpickler.load()
+
+
+class SubSample(SampleBase):
     """Represents a subsample of events
 
     Could be e.g. a single oscillation channel
@@ -612,33 +716,6 @@ class SubSample:
 
             self.events.append(event)
 
-    def shallow_copy(self) -> "SubSample":
-        """Makes a very shallow copy of this SubSample with all the same member variable values but an empty event list
-
-        :return: copy
-        :rtype: SubSample
-        """
-
-        new_subsample = SubSample(
-            name=self.name,
-            parameters=self.parameters,
-            base_pot=self.base_pot,
-            do_binned_osc_probs=self.do_binned_osc_probs,
-            osc_energy_binning=self.osc_energy_binning,
-        )
-
-        new_subsample.flux_hist = self.flux_hist
-        new_subsample.flux_binning = self.flux_binning
-        new_subsample.integrated_flux = self.integrated_flux
-        new_subsample.fixed_xsec_weight = self.fixed_xsec_weight
-        new_subsample.n_max_events_weight = self.n_max_events_weight
-        new_subsample.oscillator = self.oscillator
-        new_subsample.binned_osc_probs = self.binned_osc_probs
-        new_subsample.binned_gradients = self.binned_gradients
-        new_subsample.binned_second_derivs = self.binned_second_derivs
-
-        return new_subsample
-
     def fill_from_file(
         self,
         file: NuisanceFile,
@@ -733,45 +810,6 @@ class SubSample:
             * n_nucleons
             * pot_weight
         )
-
-    def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
-        """Get an array of event level variables for each event in this SubSample
-
-        returns an array containing values for each event filled with the specified variable.
-        Can specify a cut which should be a function that takes an event as input and returns true or false.
-        """
-
-        values = []
-        for event in self.events:
-
-            if cut is None or cut(event):
-                values.append(event.get_var(key))
-
-        return np.array(values, dtype=float)
-
-    def apply_selection(
-        self, selection: SelectionBase, progress_bar: bool = False
-    ) -> "SubSample":
-        """Apply a selection to the events in this subsample
-
-        Will return a copy of this subsapmple with only events that pass the selection in it
-        """
-
-        new_subsample = self.shallow_copy()
-
-        iterator = self.events
-        if progress_bar:
-            iterator = tqdm(
-                self.events, desc=f"applying [{selection.name}] to {self.name}"
-            )
-
-        for event in iterator:
-
-            if selection.apply(event):
-
-                new_subsample.events.append(event)
-
-        return new_subsample
 
     def _prep_binned_osc(self, save_gradients: bool = True, second_deriv: bool = False) -> None:
         """Prepare the arrays used for binned oscillation calculations
@@ -974,7 +1012,7 @@ class SubSample:
         return hist * self.get_event_scaling(target_mass, pot)
 
 
-class Sample:
+class Sample(SampleBase):
 
     def __init__(
         self,
@@ -1082,50 +1120,3 @@ class Sample:
             hist_total[hist_total == 0] = np.nan
 
         return hist_total
-
-    def get_array(self, key: str, cut: typing.Callable = None) -> np.array:
-        """Get an array of event level variables for each event in this SubSample
-
-        returns an array containing values for each event filled with the specified variable.
-        Can specify a cut which should be a function that takes an event as input and returns true or false.
-        """
-
-        values = []
-        for event in self.events:
-
-            if cut is None or cut(event):
-                values.append(event.get_var(key))
-
-        return np.array(values)
-
-    def to_file(self, file_name: str, keep_tensors: bool = False) -> None:
-
-        ## strip out tensor objects by default - they really beef up file sizes
-        if not keep_tensors:
-
-            for event in self.events:
-
-                to_delete = []
-
-                for var_name, var in event.aux_vars.items():
-
-                    if type(var) == Tensor:
-
-                        to_delete.append(var_name)
-
-                for var_name in to_delete:
-
-                    del event.aux_vars[var_name]
-
-        with open(file_name, "wb") as file:
-
-            pickler = pickle.Pickler(file)
-            pickler.dump(self)
-
-    @staticmethod
-    def from_file(file_name: str) -> "Sample":
-
-        with open(file_name, "rb") as file:
-
-            unpickler = pickle.Unpickler(file)
-            return unpickler.load()
