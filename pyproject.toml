@@ -38,7 +38,7 @@
     "matplotlib",
     "tqdm",
     "uproot",
-    "argcomplete"
+    "jsonschema"
   ]
 
   dynamic = ["version"]
