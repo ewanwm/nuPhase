@@ -1,18 +1,7 @@
 from nuPhase.event import Event
+from nuPhase.modules.base import SelectionBase
 
 import abc
-
-
-class SelectionBase(abc.ABC):
-
-    def __init__(self):
-
-        self.name = "NO NAME"
-
-    @abc.abstractmethod
-    def apply(self, event: Event) -> bool:
-
-        raise NotImplementedError()
 
 
 class SelectionNumu0PiNP0N(SelectionBase):
@@ -41,7 +30,7 @@ class SelectionNumu0PiNP0N(SelectionBase):
 
         self.n_proton = n_protons
 
-    def apply(self, event: Event) -> bool:
+    def _apply(self, event: Event) -> bool:
 
         muons_above_threshold = 0
         protons_above_threshold = 0
@@ -133,7 +122,7 @@ class SelectionCCInclusive(SelectionBase):
 
         self.name = f"nu{lepton_name} CC Inclusive"
 
-    def apply(self, event: Event) -> bool:
+    def _apply(self, event: Event) -> bool:
 
         n_particle_map = dict(
             zip(
@@ -317,7 +306,7 @@ class SelectionNue0PiNP0N(SelectionBase):
 
         self.n_proton = n_protons
 
-    def apply(self, event: Event) -> bool:
+    def _apply(self, event: Event) -> bool:
 
         electrons_above_threshold = 0
         protons_above_threshold = 0
@@ -385,7 +374,7 @@ class SelectionNue0Pi0P(SelectionBase):
 
         self.name = "nue 0pi 0proton"
 
-    def apply(self, event: Event) -> bool:
+    def _apply(self, event: Event) -> bool:
 
         electrons_above_threshold = 0
         protons_above_threshold = 0
@@ -446,7 +435,7 @@ class SelectionNumu0Pi0P(SelectionBase):
 
         self.name = "numu 0pi 0proton"
 
-    def apply(self, event: Event) -> bool:
+    def _apply(self, event: Event) -> bool:
 
         muons_above_threshold = 0
         protons_above_threshold = 0

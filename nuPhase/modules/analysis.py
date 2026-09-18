@@ -1,17 +1,18 @@
+import abc
+import typing
+
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import pyplot as plt
 import numpy as np
 
-import typing
-
 from nuPhase.sample import Sample, Binning
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.utils import strip_file_extension
 from nuPhase.modes import cc_modes, nc_modes
+from nuPhase.modules.base import AnalysisBase
 
-
-class UnconstrainableNueAnalysis:
+class UnconstrainableNueAnalysis(AnalysisBase):
 
     def __init__(
         self,
@@ -75,7 +76,7 @@ class UnconstrainableNueAnalysis:
         return fd_event_rate
 
 
-class BasicAnalysis:
+class BasicAnalysis(AnalysisBase):
 
     def __init__(self, out_file_name: str, samples: typing.List[Sample]):
 
@@ -269,7 +270,7 @@ class BasicAnalysis:
         plt.close(fig)
 
 
-class FisherInfoAnalysis:
+class FisherInfoAnalysis(AnalysisBase):
 
     def __init__(
         self,
