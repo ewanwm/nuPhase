@@ -6,6 +6,7 @@ from nuPhase.modules.analysis import (
     UnconstrainableNueAnalysis,
 )
 from nuPhase.materials import material_from_name
+from nuPhase.modules.module_list import moduleTypeEnum, ModuleList
 
 from argparse import ArgumentParser
 import sys
@@ -185,8 +186,35 @@ def setup_parser():
     unconstrainable_analysis_parser.set_defaults(func = unconstrainable_analysis)
     unconstrainable_analysis_parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
     unconstrainable_analysis_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
+    
+    ## set up parser for applying transform to a sample
+    unconstrainable_analysis_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample")
+    unconstrainable_analysis_parser.set_defaults(func = apply_transformation)
+    unconstrainable_analysis_parser.add_argument('--transformation', '-t', help="The transformation that should be applied", required=True, type=str)
+    unconstrainable_analysis_parser.add_argument('--input-sample', '-i', help="Path to the sample that the transformation should be applied to", required=True, type=str)
+    unconstrainable_analysis_parser.add_argument('--progress', '-p', help="Show progress bar", action="store_true", required=False)
         
     return parser
+
+def apply_transformation(args, output_file):
+
+    sample = Sample.from_file(args.input_sample)
+
+    module = ModuleList().get_module(args.transformation)
+
+    ## create an instance of the module class
+    module_instance = module()
+
+    if ModuleList().get_module_type(module) == moduleTypeEnum.transformation:
+        module_instance.initialise(sample)
+        sample.apply_transformation(transformation=module_instance, progress_bar=args.progress).to_file(output_file)
+    elif ModuleList().get_module_type(module) == moduleTypeEnum.selection:
+        module_instance.initialise(sample)
+        sample.apply_selection(selection=module_instance, progress_bar=args.progress).to_file(output_file)
+    else:
+        raise ValueError(f"provided module ({args.transformation}) is not a transformation or selection :(")
+
+    module_instance.finalise(sample)
 
 def fisher_analysis(args, output_file):
 
