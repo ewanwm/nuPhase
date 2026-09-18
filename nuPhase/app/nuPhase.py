@@ -188,11 +188,11 @@ def setup_parser():
     unconstrainable_analysis_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
     
     ## set up parser for applying transform to a sample
-    unconstrainable_analysis_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample")
-    unconstrainable_analysis_parser.set_defaults(func = apply_transformation)
-    unconstrainable_analysis_parser.add_argument('--transformation', '-t', help="The transformation that should be applied", required=True, type=str)
-    unconstrainable_analysis_parser.add_argument('--input-sample', '-i', help="Path to the sample that the transformation should be applied to", required=True, type=str)
-    unconstrainable_analysis_parser.add_argument('--progress', '-p', help="Show progress bar", action="store_true", required=False)
+    apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample")
+    apply_transform_parser.set_defaults(func = apply_transformation)
+    apply_transform_parser.add_argument('--transformation', '-t', help="The transformation that should be applied", required=True, type=str)
+    apply_transform_parser.add_argument('--input-sample', '-i', help="Path to the sample that the transformation should be applied to", required=True, type=str)
+    apply_transform_parser.add_argument('--progress', '-p', help="Show progress bar", action="store_true", required=False)
         
     return parser
 
