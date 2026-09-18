@@ -21,7 +21,7 @@ import jsonschema
 from nuPhase.materials import Molecule
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event
-from nuPhase.modules.selection import SelectionBase
+from nuPhase.modules.base import TransformationBase, SelectionBase
 
 
 class NuFlavour(IntEnum):
@@ -517,19 +517,22 @@ class SampleBase(abc.ABC):
 
     def apply_selection(
         self, selection: SelectionBase, progress_bar: bool = False
-    ) -> "SubSample":
+    ) -> "SampleBase":
         """Apply a selection to the events in this sample
 
         Will return a copy of this subsapmple with only events that pass the selection in it
         """
 
+        ## TODO: Add option to apply in place - don't make a copy and actually alter the original sample object - saving memory
+
         ## make a shallow copy of this sample
-        new_subsample = copy.copy(self)
+        new_sample = copy.copy(self)
+        new_sample.events = []
 
         iterator = self.events
         if progress_bar:
             iterator = tqdm(
-                self.events, desc=f"applying [{selection.name}] to {self.name}"
+                self.events, desc=f"applying selection [{selection.name}] to {self.name}"
             )
 
         ## apply the selection
@@ -537,9 +540,35 @@ class SampleBase(abc.ABC):
 
             if selection.apply(event):
 
-                new_subsample.events.append(event)
+                new_sample.events.append(event)
 
-        return new_subsample
+        return new_sample
+
+    def apply_transformation(self, transformation: TransformationBase, progress_bar: bool = False) -> "SampleBase":
+        """Apply a transformation to all events in this sample
+
+        :param transformation: The transformation to be applied
+        :type transformation: TransformationBase
+        :param progress_bar: If true, will print a progress bar showing how many events have been processed, defaults to False
+        :type progress_bar: bool, optional
+        :return: This sample (after transformation has been applied)
+        :rtype: SampleBase
+        """
+
+        ## TODO: Add option to apply in place or make a copy
+
+        iterator = self.events
+        if progress_bar:
+            iterator = tqdm(
+                self.events, desc=f"applying transformation [{transformation.name}] to {self.name}"
+            )
+
+        ## apply the selection
+        for event in iterator:
+
+            transformation.apply(event)
+            
+        return self
 
     
     def to_file(self, file_name: str, keep_tensors: bool = False) -> None:
@@ -1108,7 +1137,7 @@ class Sample(SampleBase):
         cbar = plt.colorbar(mappable)
         if z_label is None:
             cbar.set_label(
-                f"N Events kg"
+                f"N Events"
             )
         else:
             cbar.set_label(z_label)
