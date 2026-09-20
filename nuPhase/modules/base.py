@@ -6,6 +6,7 @@ other parts of the code
 
 import abc
 import typing
+from argparse import ArgumentParser, Namespace
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -15,6 +16,54 @@ if TYPE_CHECKING:
 class ModuleBase(abc.ABC):
     """Base class of all modules
     """
+
+    def help(self) -> str:
+        """Override this to print a useful help message in the CLI
+
+        :return: handy help message
+        :rtype: str
+        """
+
+        return ""
+
+    def setup_parser(self, parser: ArgumentParser) -> None:
+        """Sets up command line interface parser options
+
+        :param parser: The parser that options will be added to
+        :type parser: ArgumentParser
+        """
+
+        ## call user defined parser code
+        self._setup_parser(parser)
+
+    @abc.abstractmethod
+    def _setup_parser(self, parser: ArgumentParser) -> None:
+        """Put your code to add command line interface parser options here
+
+        :param parser: The parser that options will get added to
+        :type parser: ArgumentParser
+        """
+
+        raise NotImplementedError()
+
+    def parse_args(self, args: Namespace) -> None:
+        """Takes arguments that are defined by setup_parser and convert them into class members
+
+        :param args: The parsed command line arguments
+        :type args: Namespace
+        """
+
+        self._parse_args(args)
+
+    @abc.abstractmethod
+    def _parse_args(self, args: Namespace) -> None:
+        """Code to take parsed command line arguments and turn them into useful internal class variables should go here
+
+        :param args: parsed command line arguments
+        :type args: Namespace
+        """
+
+        raise NotImplementedError
 
 class TransformationBase(ModuleBase):
     """All transformation modules should inherit from this
@@ -26,6 +75,19 @@ class TransformationBase(ModuleBase):
     be set up in the optional _initialise(self, sample) method. You should then implement
     the functionality to reset this in the _finalise(self, sample) method.
     """
+
+    def setup_parser(self, parser: ArgumentParser) -> None:
+        """Set up command line parser options
+
+        :param parser: CLI parser
+        :type parser: ArgumentParser
+        """
+
+        ## set up any arguments from base class
+        super().setup_parser(parser)
+    
+        parser.add_argument('--input-sample', '-i', help="Path to the sample that the transformation should be applied to", required=True, type=str)
+        parser.add_argument('--progress', '-p', help="Show progress bar", action="store_true", required=False)
 
     def _initialise(self, sample: 'Sample') -> None:
         """Set up for the transformation should go here

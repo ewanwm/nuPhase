@@ -5,6 +5,8 @@ from nuPhase.modules.analysis import (
     BasicAnalysis,
     UnconstrainableNueAnalysis,
 )
+from nuPhase.oscillator import OscillationCalculator
+
 from nuPhase.materials import material_from_name
 from nuPhase.modules.module_list import moduleTypeEnum, ModuleList
 
@@ -153,6 +155,8 @@ def setup_parser():
     prepare_subsample_parser = subparsers.add_parser("prepare-subsample", help="'prepare' a subsample - Convert it from nuisance flattree into a nuPhase object that canbe used for further analysis")
     prepare_subsample_parser.set_defaults(func = prepare_subsample)
     prepare_subsample_parser.add_argument('--nuisance-file', help="The name of the input file describing the MC events", required=True, type=str)
+    prepare_subsample_parser.add_argument("--oscillator-baseline", help="The baseline of this subsample. If None then no oscillations will be applied", type=float, required=False, default=None)
+    prepare_subsample_parser.add_argument("--oscillator-density", help="The density of the propagation medium for this subsample", type=float, required=False, default=2.6)
     prepare_subsample_parser.add_argument('--base-pot', help="The POT that was assumed when generating this subsample", required=True, type=float)
     prepare_subsample_parser.add_argument('--target-material', help="The target material that this subsample was generated with", required=True, type=str)
     prepare_subsample_parser.add_argument('--target-mass', help="The target mass to scale to", required=True, type=float)
@@ -190,9 +194,12 @@ def setup_parser():
     ## set up parser for applying transform to a sample
     apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample")
     apply_transform_parser.set_defaults(func = apply_transformation)
-    apply_transform_parser.add_argument('--transformation', '-t', help="The transformation that should be applied", required=True, type=str)
-    apply_transform_parser.add_argument('--input-sample', '-i', help="Path to the sample that the transformation should be applied to", required=True, type=str)
-    apply_transform_parser.add_argument('--progress', '-p', help="Show progress bar", action="store_true", required=False)
+    transformation_subparsers = apply_transform_parser.add_subparsers(title = "Transformations", dest="transformation")
+
+    for transformation in ModuleList().get_selection_modules() + ModuleList().get_transformation_modules():
+        module_parser = transformation_subparsers.add_parser(transformation.__name__, help=transformation.help)
+        module_instance = transformation()
+        module_instance.setup_parser(module_parser)
         
     return parser
 
@@ -204,6 +211,7 @@ def apply_transformation(args, output_file):
 
     ## create an instance of the module class
     module_instance = module()
+    module_instance.parse_args(args)
 
     if ModuleList().get_module_type(module) == moduleTypeEnum.transformation:
         module_instance.initialise(sample)
@@ -228,7 +236,7 @@ def fisher_analysis(args, output_file):
         fd_samples=fd_samples,
         interaction_space=Binning(
             ["Enu_true", "q3", "q0"],
-            bins=[flux_bins, np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)],
+            bin_edges=[flux_bins, np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)],
         )
     )
 
@@ -249,6 +257,10 @@ def prepare_subsample(args, output_file):
     if target_pot is None:
         target_pot = args.base_pot
 
+    oscillator = None
+    if args.oscillator_baseline is not None:
+        oscillator = OscillationCalculator(baseline=args.oscillator_baseline, density=args.oscillator_density, initialisation="pdg")
+
     parameters = SubSampleParameters(
         pot=target_pot,
         target_material=target_material,
@@ -261,6 +273,7 @@ def prepare_subsample(args, output_file):
         name=args.name,
         parameters=parameters,
         base_pot=args.base_pot,
+        oscillator=oscillator,
     )
 
     ## fill it with the nuisance file

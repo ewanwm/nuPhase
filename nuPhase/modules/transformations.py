@@ -1,4 +1,5 @@
 import typing
+from argparse import ArgumentParser, Namespace
 
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -17,19 +18,24 @@ class CalculateFisherInfo(TransformationBase):
     """
 
     def __init__(
-        self,
-        oscillator: OscillationCalculator,
-        make_plots: bool = True,
-        plot_file_name: str = "Fisher-info.pdf",
+        self
     ):
 
-        self.make_plots = make_plots
-        self.oscillator = oscillator
-        self.plot_file_name = plot_file_name
+        super().__init__()
 
         self.fisher_info = None
         self.event_rates = None
         self.per_event_fisher_info = None
+
+    def _setup_parser(self, parser: ArgumentParser):
+
+        parser.add_argument("--make-plots", action="store_true", help="Flag to make plots of the fisher info")
+        parser.add_argument("--plot-file-name", type=str, required=False, default="fisher-info-plots.pdf", help="The name of the file to save plots to")
+        
+    def _parse_args(self, args: Namespace):
+
+        self.make_plots = args.make_plots
+        self.plot_file_name = args.plot_file_name
 
     def _initialise(self, sample: Sample) -> None:
 
@@ -43,15 +49,15 @@ class CalculateFisherInfo(TransformationBase):
 
         ## get event by event fisher info
         self.per_event_fisher_info = {}
-        for parameter_name in self.oscillator.parameters.keys():
+        for parameter_name in OscillationCalculator.parameter_names:
 
             self.per_event_fisher_info[parameter_name] = self.fisher_info[parameter_name] / self.event_rates
 
-    def _finalise(self):
+    def _finalise(self, sample: Sample):
 
         if self.make_plots:
 
-            for parameter_name in self.oscillator.parameters.keys():
+            for parameter_name in OscillationCalculator.parameter_names:
 
                 if self.sample.binning.n_dims == 1:
 
@@ -113,11 +119,11 @@ class CalculateFisherInfo(TransformationBase):
                         "Can't make fisher info plots for n-dims != 1 or 2 :("
                     )
 
-        self._pdf.close()
+            self._pdf.close()
 
     def _apply(self, event: Event):
 
-        for parameter_name in self.oscillator.parameters.keys():
+        for parameter_name in OscillationCalculator.parameter_names:
 
             bins = tuple(
                 self.sample.binning.digitize(
@@ -127,7 +133,7 @@ class CalculateFisherInfo(TransformationBase):
 
             try:
                 event.aux_vars[f"{parameter_name}_fisher_info"] = (
-                    self.per_event_fisher_info[bins]
+                    self.per_event_fisher_info[parameter_name][bins]
                 )
             except IndexError:
                 event.aux_vars[f"{parameter_name}_fisher_info"] = 0.0
@@ -164,7 +170,7 @@ class CalculateFisherInfo(TransformationBase):
 
                 self._pdf.savefig(fig)
 
-                for par_name in self.oscillator.parameters.keys():
+                for par_name in OscillationCalculator.parameter_names:
 
                     fig.clear()
                     plt.stairs(
@@ -179,7 +185,7 @@ class CalculateFisherInfo(TransformationBase):
         gradients = {}
         fisher_informations = {}
 
-        for osc_par in self.oscillator.parameters.keys():
+        for osc_par in OscillationCalculator.parameter_names:
 
             gradients[osc_par] = sample.get_event_rates(
                 weight_var=f"osc_weight_{osc_par}_grad"
@@ -188,7 +194,7 @@ class CalculateFisherInfo(TransformationBase):
             fisher_informations[osc_par] = gradients[osc_par] * gradients[osc_par]
 
         if self.make_plots:
-            for osc_par in self.oscillator.parameters.keys():
+            for osc_par in OscillationCalculator.parameter_names:
 
                 for data_dict, label in zip([gradients], ["Gradient"]):
                     fig, ax = plt.subplots()
@@ -229,11 +235,22 @@ class ApplyVariableSmearing(TransformationBase):
     """
 
     def __init__(
-        self, true_var: str, smeared_var: str, smear_function: typing.Callable
+        self
     ):
-        self.true_var = true_var
-        self.smeared_var = smeared_var
-        self.smear_function = smear_function
+
+        super().__init__()
+    
+    def _setup_parser(self, parser: ArgumentParser):
+
+        parser.add_argument("--true-var", type=str, required=True, help="The name of the variable that is to be smeared")
+        parser.add_argument("--smeared-var", type=str, required=True, help="The name to save the variable as after smearing has been applied")
+        parser.add_argument("--smear-fraction", type=float, required=True, help="The fractional 'unertainty' on the variable (smearing will be <VARIABLE VALUE> * this)")
+        
+    def _parse_args(self, args: Namespace):
+
+        self.true_var = args.true_var
+        self.smeared_var = args.smeared_var
+        self.smear_fraction = args.smear_fraction
 
         self.generator = np.random.default_rng(seed=None)
 
