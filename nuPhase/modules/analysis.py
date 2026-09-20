@@ -29,6 +29,14 @@ class UnconstrainableNueAnalysis(AnalysisBase):
 
         self._pdf = PdfPages(out_file_name)
 
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
     def run(self):
 
         for sample in [*self.nd_samples, *self.fd_samples]:
@@ -84,6 +92,14 @@ class BasicAnalysis(AnalysisBase):
 
         ## open up a pdf to put plots in
         self._pdf = PdfPages(out_file_name)
+
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
 
     def run(self):
 
@@ -298,6 +314,14 @@ class FisherInfoAnalysis(AnalysisBase):
         ## set up fisher information maps
         self._fisher_info_maps = [ self.make_fisher_info_map(sample=sample) for sample in self.fd_samples ]
 
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
     def run(self):
 
         for nd_sample in self.nd_samples:
@@ -395,7 +419,7 @@ class FisherInfoAnalysis(AnalysisBase):
             ## the projection from the user specified variables
             projection_binning = Binning(
                 variables=variables,
-                bins=[
+                bin_edges=[
                     self.interaction_space.get_bin_edges(variables[0]),
                     self.interaction_space.get_bin_edges(variables[1]),
                 ],
