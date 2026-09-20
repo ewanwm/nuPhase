@@ -107,6 +107,24 @@ class ModuleList(metaclass=Singleton):
         """
 
         return self._modules
+
+    def get_transformation_modules(self) -> typing.List[typing.Type[ModuleBase]]:
+        """Get a list of all the registered transformation modules
+
+        :return: All the registered transformation modules
+        :rtype: typing.List[typing.Type[ModuleBase]]
+        """
+
+        return self._transformation_modules
+
+    def get_selection_modules(self) -> typing.List[typing.Type[ModuleBase]]:
+        """Get a list of all the registered selection modules
+
+        :return: All the registered selection modules
+        :rtype: typing.List[typing.Type[ModuleBase]]
+        """
+
+        return self._selection_modules
     
     def get_module_names(self) -> typing.List[str]:
         """Get a list of the names of all registered modules
@@ -139,8 +157,20 @@ class ModuleList(metaclass=Singleton):
 classes = []
 for module in ['nuPhase.modules.analysis', 'nuPhase.modules.transformations', 'nuPhase.modules.selection']:
     ## this will add all ModuleBase derived classes from the specified module
-    classes += [cls_obj for _, cls_obj in inspect.getmembers(sys.modules[module]) if inspect.isclass(cls_obj) and issubclass(cls_obj, ModuleBase)]
+    for _, cls_obj in inspect.getmembers(sys.modules[module]):
 
+        ## if not a class continue
+        if not inspect.isclass(cls_obj):
+            continue
+
+        if not issubclass(cls_obj, ModuleBase):
+            continue
+
+        if cls_obj in (AnalysisBase, SelectionBase, TransformationBase, ModuleBase):
+            continue
+
+        classes.append(cls_obj)
+        
 for class_obj in classes:
     ModuleList().register(class_obj)
     
