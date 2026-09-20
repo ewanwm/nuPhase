@@ -871,10 +871,10 @@ class SubSample(SampleBase):
         for i_bin in range(n_bins):
 
             osc_probs = self.oscillator.calculate_osc_probs(
-                np.array([energy_bin_centres[i_bin]]), antineutrino=self.antinu
+                np.array([energy_bin_centres[i_bin]]), antineutrino=self.parameters.antinu
             )
             osc_prob_tensor = osc_probs.get_values(
-                [0, self.initial_flavour, self.final_flavour]
+                [0, self.parameters.initial_flavour, self.parameters.final_flavour]
             )
 
             self.binned_osc_probs[i_bin] = osc_prob_tensor.numpy()
@@ -887,7 +887,7 @@ class SubSample(SampleBase):
                 ):
 
                     grad_tensor = grad(osc_prob_tensor, parameter)
-                    self.binned_gradients[par_name][i_bin] = grad_tensor.numpy()
+                    self.binned_gradients[par_name][i_bin] = grad_tensor.numpy()[0]
 
                     if second_deriv:
 
@@ -945,7 +945,7 @@ class SubSample(SampleBase):
                     or event_e_bin >= self.osc_energy_binning.shape[0] - 1
                 ):
 
-                    if self.initial_flavour == self.final_flavour:
+                    if self.parameters.initial_flavour == self.parameters.final_flavour:
                         event.aux_vars["osc_weight"] = 1.0
                     else:
                         event.aux_vars["osc_weight"] = 0.0
@@ -1043,9 +1043,9 @@ class SubSample(SampleBase):
         osc_weights = np.ones((np.sum(not_nan)))
         if self.oscillator is not None:
             osc_probs = self.oscillator.calculate_osc_probs(
-                energies[not_nan], antineutrino=self.antinu
+                energies[not_nan], antineutrino=self.parameters.antinu
             )
-            osc_weights = osc_probs.numpy()[:, self.initial_flavour, self.final_flavour]
+            osc_weights = osc_probs.numpy()[:, self.parameters.initial_flavour, self.parameters.final_flavour]
 
         ## if weight variable specified make weight array
         weight_array = None
