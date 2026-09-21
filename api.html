@@ -1,0 +1,226 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API &mdash; nuPhase 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="nuPhase documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            nuPhase
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">📖 References</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#events">Events</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nuPhase.event.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nuPhase.event.Event.add_particle"><code class="docutils literal notranslate"><span class="pre">Event.add_particle()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nuPhase.event.Event.add_particles_from_arrays"><code class="docutils literal notranslate"><span class="pre">Event.add_particles_from_arrays()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nuPhase.event.Event.get_var"><code class="docutils literal notranslate"><span class="pre">Event.get_var()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#nuPhase.event.Particle"><code class="docutils literal notranslate"><span class="pre">Particle</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#samples">Samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#materials">Materials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oscillations">Oscillations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#modules">Modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-modules">Accessing Modules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#base-modules">Base Modules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transformation-modules">Transformation Modules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#selection-modules">Selection Modules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analysis-modules">Analysis Modules</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#apps">Apps</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nuphase">nuPhase</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">nuPhase</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api">
+<h1>API<a class="headerlink" href="#api" title="Link to this heading"></a></h1>
+<section id="events">
+<h2>Events<a class="headerlink" href="#events" title="Link to this heading"></a></h2>
+<blockquote>
+<div><dl class="py class" id="module-nuPhase.event">
+<dt class="sig sig-object py" id="nuPhase.event.Event">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nuPhase.event.</span></span><span class="sig-name descname"><span class="pre">Event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_nu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nu_pdg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nuPhase.event.Event" title="Link to this definition"></a></dt>
+<dd><p>represents a single event (really a single neut interaction)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nuPhase.event.Event.add_particle">
+<span class="sig-name descname"><span class="pre">add_particle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">particle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nuPhase.event.Particle" title="nuPhase.event.Particle"><span class="pre">Particle</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nuPhase.event.Event.add_particle" title="Link to this definition"></a></dt>
+<dd><p>Add a single particle to the event</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>particle</strong> (<a class="reference internal" href="#nuPhase.event.Particle" title="nuPhase.event.Particle"><em>Particle</em></a>) – particle to add</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nuPhase.event.Event.add_particles_from_arrays">
+<span class="sig-name descname"><span class="pre">add_particles_from_arrays</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">px</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nuPhase.event.Event.add_particles_from_arrays" title="Link to this definition"></a></dt>
+<dd><p>Add a number of particles to the event</p>
+<p>All arrays must have the same shape (which should be 1D with length == num of particles)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pdg</strong> (<em>np.array</em>) – PDG codes for each particle</p></li>
+<li><p><strong>energies</strong> (<em>np.array</em>) – energies of each particle</p></li>
+<li><p><strong>px</strong> (<em>np.array</em>) – x momenta</p></li>
+<li><p><strong>py</strong> (<em>np.array</em>) – y momenta</p></li>
+<li><p><strong>pz</strong> (<em>np.array</em>) – z momenta</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nuPhase.event.Event.get_var">
+<span class="sig-name descname"><span class="pre">get_var</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nuPhase.event.Event.get_var" title="Link to this definition"></a></dt>
+<dd><p>Get the value of some event level variable</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ValueError if variable is not one of the standard ones and is not in the aux variable dictionary for this event</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nuPhase.event.Particle">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nuPhase.event.</span></span><span class="sig-name descname"><span class="pre">Particle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nuPhase.event.Particle" title="Link to this definition"></a></dt>
+<dd><p>Represents a single particle within an event</p>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="samples">
+<h2>Samples<a class="headerlink" href="#samples" title="Link to this heading"></a></h2>
+</section>
+<section id="materials">
+<h2>Materials<a class="headerlink" href="#materials" title="Link to this heading"></a></h2>
+<blockquote>
+<div></div></blockquote>
+</section>
+<section id="oscillations">
+<span id="module-nuPhase.materials"></span><h2>Oscillations<a class="headerlink" href="#oscillations" title="Link to this heading"></a></h2>
+</section>
+<section id="modules">
+<h2>Modules<a class="headerlink" href="#modules" title="Link to this heading"></a></h2>
+<section id="accessing-modules">
+<h3>Accessing Modules<a class="headerlink" href="#accessing-modules" title="Link to this heading"></a></h3>
+</section>
+<section id="base-modules">
+<h3>Base Modules<a class="headerlink" href="#base-modules" title="Link to this heading"></a></h3>
+</section>
+<section id="transformation-modules">
+<h3>Transformation Modules<a class="headerlink" href="#transformation-modules" title="Link to this heading"></a></h3>
+</section>
+<section id="selection-modules">
+<h3>Selection Modules<a class="headerlink" href="#selection-modules" title="Link to this heading"></a></h3>
+</section>
+<section id="analysis-modules">
+<h3>Analysis Modules<a class="headerlink" href="#analysis-modules" title="Link to this heading"></a></h3>
+</section>
+</section>
+<section id="apps">
+<h2>Apps<a class="headerlink" href="#apps" title="Link to this heading"></a></h2>
+<section id="nuphase">
+<h3>nuPhase<a class="headerlink" href="#nuphase" title="Link to this heading"></a></h3>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="nuPhase documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ewan Miller.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
