@@ -10,7 +10,7 @@ from nuPhase.oscillator import OscillationCalculator
 from nuPhase.materials import material_from_name
 from nuPhase.modules.module_list import moduleTypeEnum, ModuleList
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, HelpFormatter
 import sys
 
 import numpy as np
@@ -142,7 +142,8 @@ flux_bins = np.array(
 
 def setup_parser():
 
-    parser = ArgumentParser("make-plots")
+    parser = ArgumentParser("make-plots",
+        formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40))
 
     parser.add_argument(
         "-o", "--output", type=str, help="name of output file", required=True
@@ -192,7 +193,9 @@ def setup_parser():
     unconstrainable_analysis_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
     
     ## set up parser for applying transform to a sample
-    apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample")
+    apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample",
+        formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
+    )
     apply_transform_parser.set_defaults(func = apply_transformation)
     transformation_subparsers = apply_transform_parser.add_subparsers(title = "Transformations", dest="transformation")
 
