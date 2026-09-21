@@ -1,7 +1,6 @@
 from nuPhase.event import Event
 from nuPhase.modules.base import SelectionBase
 
-import abc
 from argparse import ArgumentParser, Namespace
 
 
@@ -48,7 +47,7 @@ class SelectionCCInclusive(SelectionBase):
 
         self.name = f"nu{self.lepton_name} CC Inclusive"
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--lepton-pdg", type=int, help="The PDG code of the main lepton")
         parser.add_argument("--lepton-name", type=str, help="The name to give the main lepton. **This will affect the name of the variables that are filled by this selection**")
@@ -131,7 +130,7 @@ class SelectionNumuCCInclusive(SelectionCCInclusive):
         self.lepton_pdg=13
         self.lepton_name="mu"
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--muon-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main muon")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
@@ -161,7 +160,7 @@ class SelectionNueCCInclusive(SelectionCCInclusive):
         self.lepton_pdg=11
         self.lepton_name="e"
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--electron-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main electron")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
@@ -191,7 +190,7 @@ class SelectionNumubarCCInclusive(SelectionCCInclusive):
         self.lepton_pdg=-13
         self.lepton_name="mubar"
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--muon-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main muon")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
@@ -222,7 +221,7 @@ class SelectionNuebarCCInclusive(SelectionCCInclusive):
         self.lepton_pdg=-11
         self.lepton_name="ebar"
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--electron-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main electron")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
@@ -252,7 +251,7 @@ class SelectionNue0PiNP(SelectionBase):
     def help(self):
         return self.__doc__
     
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--lepton-pdg", type=int, required=True, help="PDG code for the main lepton")
         parser.add_argument("--lepton-name", type=str, required=True, help="The name for the main lepton. **This will change the name of the saved variables**")
@@ -333,7 +332,7 @@ class SelectionNue0Pi0P(SelectionBase):
     def help(self):
         return self.__doc__
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--electron-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main electron")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
@@ -405,7 +404,7 @@ class SelectionNumu0Pi0P(SelectionBase):
     def help(self):
         return self.__doc__
 
-    def _setup_parser(self, parser):
+    def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--muon-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main muon")
         parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")

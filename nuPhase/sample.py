@@ -516,11 +516,16 @@ class SampleBase(abc.ABC):
         return np.array(values, dtype=float)
 
     def apply_selection(
-        self, selection: SelectionBase, progress_bar: bool = False
+        self, selection: SelectionBase, progress_bar: bool = False, strip_particle_info: bool = False
     ) -> "SampleBase":
         """Apply a selection to the events in this sample
 
         Will return a copy of this subsapmple with only events that pass the selection in it
+
+        .. warn::
+            
+            strip_particle_info will This will change all references to event so should be used for the last transformation / selection in the chain
+         
         """
 
         ## TODO: Add option to apply in place - don't make a copy and actually alter the original sample object - saving memory
@@ -540,17 +545,28 @@ class SampleBase(abc.ABC):
 
             if selection.apply(event):
 
+                if strip_particle_info:
+
+                    del event.particles
+
                 new_sample.events.append(event)
+                
 
         return new_sample
 
-    def apply_transformation(self, transformation: TransformationBase, progress_bar: bool = False) -> "SampleBase":
+    def apply_transformation(self, transformation: TransformationBase, progress_bar: bool = False, strip_particle_info: bool =False) -> "SampleBase":
         """Apply a transformation to all events in this sample
+
+        .. warn::
+            
+            strip_particle_info will This will change all references to event so should be used for the last transformation / selection in the chain
 
         :param transformation: The transformation to be applied
         :type transformation: TransformationBase
         :param progress_bar: If true, will print a progress bar showing how many events have been processed, defaults to False
         :type progress_bar: bool, optional
+        :param strip_particle_info: If true, all particle level info will be stripped from the event - this saves memory but means you can't apply any more selections or transformations that require particle level info
+        :type strip_particle_info: bool, optional
         :return: This sample (after transformation has been applied)
         :rtype: SampleBase
         """
@@ -567,6 +583,10 @@ class SampleBase(abc.ABC):
         for event in iterator:
 
             transformation.apply(event)
+
+            if strip_particle_info:
+
+                del event.particles
             
         return self
 
@@ -748,7 +768,7 @@ class SubSample(SampleBase):
     def fill_from_file(
         self,
         file: NuisanceFile,
-        auxilary_variables=["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"],
+        auxilary_variables=["q0", "q3", "Enu_QE"],
         progress_bar: bool = False,
         max_n_events: int = None,
     ) -> "SubSample":
@@ -756,7 +776,7 @@ class SubSample(SampleBase):
 
         :param file: The path to the nuisance flat tree file
         :type file: NuisanceFile
-        :param auxilary_variables: Values to store in the "aux_vars" (variables that are available to downstream analysis modules), defaults to ["Q2", "q0", "q3", "ELep", "CosLep", "Enu_QE"]
+        :param auxilary_variables: Values to store in the "aux_vars" (variables that are available to downstream analysis modules), defaults to ["q0", "q3", "Enu_QE"]
         :type auxilary_variables: list, optional
         :param progress_bar: If True, will display a progress bar showing how many events have been read, defaults to False
         :type progress_bar: bool, optional
@@ -1095,14 +1115,14 @@ class Sample(SampleBase):
             )
 
     def apply_selection(
-        self, selection: SelectionBase, progress_bar: bool = False
+        self, selection: SelectionBase, progress_bar: bool = False, strip_particle_info: bool = False
     ) -> "Sample":
 
         new_subsamples = []
         for subsample in self.subsamples:
 
             new_subsample = subsample.apply_selection(
-                selection=selection, progress_bar=progress_bar
+                selection=selection, progress_bar=progress_bar, strip_particle_info=strip_particle_info
             )
             new_subsamples.append(new_subsample)
 

@@ -197,6 +197,7 @@ def setup_parser():
         formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
     )
     apply_transform_parser.set_defaults(func = apply_transformation)
+    apply_transform_parser.add_argument("--strip-particle-info", action="store_true", help="Strip particle level information from the event. Saves space but won't be able to apply any more selections or transformations requiring particle level info")
     transformation_subparsers = apply_transform_parser.add_subparsers(title = "Transformations", dest="transformation")
 
     for transformation in ModuleList().get_selection_modules() + ModuleList().get_transformation_modules():
@@ -218,10 +219,10 @@ def apply_transformation(args, output_file):
 
     if ModuleList().get_module_type(module) == moduleTypeEnum.transformation:
         module_instance.initialise(sample)
-        sample.apply_transformation(transformation=module_instance, progress_bar=args.progress).to_file(output_file)
+        sample.apply_transformation(transformation=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(output_file)
     elif ModuleList().get_module_type(module) == moduleTypeEnum.selection:
         module_instance.initialise(sample)
-        sample.apply_selection(selection=module_instance, progress_bar=args.progress).to_file(output_file)
+        sample.apply_selection(selection=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(output_file)
     else:
         raise ValueError(f"provided module ({args.transformation}) is not a transformation or selection :(")
 
