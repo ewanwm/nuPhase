@@ -27,6 +27,9 @@ class CalculateFisherInfo(TransformationBase):
         self.event_rates = None
         self.per_event_fisher_info = None
 
+    def help(self):
+        return self.__doc__
+
     def _setup_parser(self, parser: ArgumentParser):
 
         parser.add_argument("--make-plots", action="store_true", help="Flag to make plots of the fisher info")
@@ -239,6 +242,9 @@ class ApplyVariableSmearing(TransformationBase):
     ):
 
         super().__init__()
+
+    def help(self):
+        return self.__doc__
     
     def _setup_parser(self, parser: ArgumentParser):
 

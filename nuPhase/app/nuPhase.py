@@ -197,8 +197,8 @@ def setup_parser():
     transformation_subparsers = apply_transform_parser.add_subparsers(title = "Transformations", dest="transformation")
 
     for transformation in ModuleList().get_selection_modules() + ModuleList().get_transformation_modules():
-        module_parser = transformation_subparsers.add_parser(transformation.__name__, help=transformation.help)
         module_instance = transformation()
+        module_parser = transformation_subparsers.add_parser(transformation.__name__, help=module_instance.help())
         module_instance.setup_parser(module_parser)
         
     return parser

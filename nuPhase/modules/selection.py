@@ -18,6 +18,9 @@ class SelectionCCInclusive(SelectionBase):
 
         super().__init__()
 
+    def help(self):
+        return self.__doc__
+    
     def _parse_args(self, args: Namespace):
 
         self.lepton_name = args.lepton_name
@@ -246,6 +249,9 @@ class SelectionNue0PiNP(SelectionBase):
 
         super().__init__()
 
+    def help(self):
+        return self.__doc__
+    
     def _setup_parser(self, parser):
 
         parser.add_argument("--lepton-pdg", type=int, required=True, help="PDG code for the main lepton")
@@ -324,6 +330,9 @@ class SelectionNue0Pi0P(SelectionBase):
 
         self.name = "nue 0pi 0proton"
 
+    def help(self):
+        return self.__doc__
+
     def _setup_parser(self, parser):
 
         parser.add_argument("--electron-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main electron")
@@ -392,6 +401,9 @@ class SelectionNumu0Pi0P(SelectionBase):
     ):
 
         self.name = "numu 0pi 0proton"
+
+    def help(self):
+        return self.__doc__
 
     def _setup_parser(self, parser):
 
