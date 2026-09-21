@@ -1,5 +1,5 @@
 # nuPhase
-Package to perform phase space analysis for long baseline neutrino oscillation experiments
+Package to perform phase space analysis for long baseline neutrino oscillation experiments.
 
 # Installation
 Git clone this repository then you can install nuPhase using pip:
