@@ -38,7 +38,7 @@
     "matplotlib",
     "tqdm",
     "uproot",
-    "argcomplete"
+    "jsonschema"
   ]
 
   dynamic = ["version"]
@@ -71,7 +71,6 @@
 [project.scripts]
 
   nuPhase = "nuPhase.app.nuPhase:main"
-  prepare-samples = "nuPhase.app.prepare_samples:main"
 
 [tool.setuptools]
 

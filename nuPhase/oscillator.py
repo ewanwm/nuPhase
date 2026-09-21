@@ -10,6 +10,8 @@ import typing
 
 
 class OscillationCalculator:
+    """Handles neutrino oscillation calculations
+    """
 
     parameter_names: typing.List[str] = [
         "theta12",
@@ -23,6 +25,16 @@ class OscillationCalculator:
     def __init__(
         self, baseline: float, density: float = 2.6, initialisation: str = "zeros"
     ):
+        """Create a new OscillationCalculator
+
+        :param baseline: Experimental baseline in km
+        :type baseline: float
+        :param density: propagation medium electron density, defaults to 2.6
+        :type density: float, optional
+        :param initialisation: Initialisation strategy for the oscillation parameters (can be "zeros" for all zeros or "pdg" to use pdg values), defaults to "zeros"
+        :type initialisation: str, optional
+        :raises ValueError: If invalid initialisation option specified
+        """
 
         self.parameters: typing.Dict[str, Tensor] = dict(
             zip(
@@ -31,8 +43,8 @@ class OscillationCalculator:
             )
         )
 
-        self.density = density
-        self.baseline = baseline
+        self.density: float = density
+        self.baseline: float = baseline
 
         if initialisation == "zeros":
             self.parameters["theta12"] = Tensor.zeros([1, 1]).requires_grad(True)
@@ -66,7 +78,7 @@ class OscillationCalculator:
             raise ValueError(f"Invalid initialisation option: {initialisation}")
 
         ## build the propagator
-        self.propagator = None
+        self.propagator: DPpropagator = None
         self._setup_propagator()
 
     def __setstate__(self, state):
@@ -100,7 +112,7 @@ class OscillationCalculator:
             self.parameters["dmsq32"] + self.parameters["dmsq21"]
         )
 
-    def zero_grad(self):
+    def zero_grad(self) -> None:
         """Zero out the gradient of all of the parameters"""
 
         for parameter in self.parameters.values():

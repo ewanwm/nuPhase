@@ -1,17 +1,18 @@
+import abc
+import typing
+
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import pyplot as plt
 import numpy as np
 
-import typing
-
 from nuPhase.sample import Sample, Binning
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.utils import strip_file_extension
 from nuPhase.modes import cc_modes, nc_modes
+from nuPhase.modules.base import AnalysisBase
 
-
-class UnconstrainableNueAnalysis:
+class UnconstrainableNueAnalysis(AnalysisBase):
 
     def __init__(
         self,
@@ -27,6 +28,14 @@ class UnconstrainableNueAnalysis:
         self.interaction_space: Binning = interaction_space
 
         self._pdf = PdfPages(out_file_name)
+
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
 
     def run(self):
 
@@ -75,7 +84,7 @@ class UnconstrainableNueAnalysis:
         return fd_event_rate
 
 
-class BasicAnalysis:
+class BasicAnalysis(AnalysisBase):
 
     def __init__(self, out_file_name: str, samples: typing.List[Sample]):
 
@@ -83,6 +92,14 @@ class BasicAnalysis:
 
         ## open up a pdf to put plots in
         self._pdf = PdfPages(out_file_name)
+
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
 
     def run(self):
 
@@ -92,10 +109,7 @@ class BasicAnalysis:
 
         ## make plots of the Xsecs for each sample
         for sample in self.samples:
-            for binning_1d in [
-                sample.binning.project([var]) for var in sample.binning.variables
-            ]:
-                self.make_xsec_plots(sample, binning_1d)
+            self.make_xsec_plots(sample)
 
         ## make plots of the event rates for each sample
         for sample in self.samples:
@@ -143,7 +157,7 @@ class BasicAnalysis:
 
                 count /= bin_widths / 0.05
 
-                plt.stairs(count, bin_edges, label=subsample.label)
+                plt.stairs(count, bin_edges, label=subsample.name)
 
             plt.legend()
             plt.xlabel("neutrino energy [GeV]")
@@ -157,9 +171,8 @@ class BasicAnalysis:
         else:
             pass
 
-    def make_xsec_plots(self, sample: Sample, binning: Binning):
+    def make_xsec_plots(self, sample: Sample):
 
-        assert binning.n_dims == 1, "Can only make xsec plots for 1D binning :("
         if sample.subsamples is not None:
 
             for subsample in sample.subsamples:
@@ -178,17 +191,22 @@ class BasicAnalysis:
                         "Enu_true", cut=lambda event: abs(event.mode) in codes
                     )
 
+                    flux_bins = subsample.flux_binning.bin_edges[0]
+                    bin_widths = flux_bins[1:] - flux_bins[:-1]
+
                     xsec = (
-                        np.histogram(enu, bins=subsample.flux_binning.bins[0])[0]
+                        np.histogram(enu, bins=flux_bins)[0] / bin_widths
                         * subsample.get_xsec_weight() * subsample.get_integrated_flux() / subsample.flux_hist[0]
                     )
 
                     ## make basic flux plot
-                    plt.stairs(xsec, subsample.flux_binning.bins[0], label=mode)
+                    plt.stairs(xsec, subsample.flux_binning.bin_edges[0], label=mode)
+
+                    plt.xscale("log")
 
                 plt.legend()
                 plt.xlabel(f"Enu_true")
-                plt.title(f"{subsample.label} Xsec")
+                plt.title(f"{subsample.name} Xsec")
                 plt.ylabel(f"XSec [1 / cm^2 / Nucleon]")
                 self._pdf.savefig(fig)
 
@@ -211,7 +229,7 @@ class BasicAnalysis:
         fig = plt.figure()
 
         event_rate = sample.get_event_rates(binning=binning)
-        plt.stairs(event_rate, binning.bins[0], label="total")
+        plt.stairs(event_rate, binning.bin_edges[0], label="total")
 
         event_rate[:] = 0.0
         mode_event_rates = []
@@ -240,7 +258,7 @@ class BasicAnalysis:
                 mode_event_rates[::-1], ["other", *cc_modes.keys()]
             ):
 
-                plt.stairs(mode_event_rate, binning.bins[0], label=mode, **stairs_args)
+                plt.stairs(mode_event_rate, binning.bin_edges[0], label=mode, **stairs_args)
 
         else:
             for mode, codes in zip(list(cc_modes.keys()), list(cc_modes.values())):
@@ -249,7 +267,7 @@ class BasicAnalysis:
                     sample.get_event_rates(
                         cut=lambda event: abs(event.mode) in codes, binning=binning
                     ),
-                    binning.bins[0],
+                    binning.bin_edges[0],
                     label=mode,
                     **stairs_args,
                 )
@@ -261,14 +279,14 @@ class BasicAnalysis:
         plt.xlabel(f"{binning.variables[0]}")
         plt.title(f"Event rate {sample.name}")
         plt.ylabel(
-            f"N Events / {sample.parameters.pot:.2E} POT / {sample.parameters.target_mass:.2E}"
+            f"N Events"
         )
         self._pdf.savefig(fig)
 
         plt.close(fig)
 
 
-class FisherInfoAnalysis:
+class FisherInfoAnalysis(AnalysisBase):
 
     def __init__(
         self,
@@ -295,6 +313,14 @@ class FisherInfoAnalysis:
 
         ## set up fisher information maps
         self._fisher_info_maps = [ self.make_fisher_info_map(sample=sample) for sample in self.fd_samples ]
+
+    def _parse_args():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser():
+        pass
+        ## TODO Once analysis modules have been integrated into the module system!!
 
     def run(self):
 
@@ -393,7 +419,7 @@ class FisherInfoAnalysis:
             ## the projection from the user specified variables
             projection_binning = Binning(
                 variables=variables,
-                bins=[
+                bin_edges=[
                     self.interaction_space.get_bin_edges(variables[0]),
                     self.interaction_space.get_bin_edges(variables[1]),
                 ],
