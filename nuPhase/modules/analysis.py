@@ -13,6 +13,8 @@ from nuPhase.modes import cc_modes, nc_modes
 from nuPhase.modules.base import AnalysisBase
 
 class UnconstrainableNueAnalysis(AnalysisBase):
+    """Will compare the interaction phase spaces of ND and FD samples and make plots of the parts of the space which are entirely unconstrainable by the ND samples
+    """
 
     def __init__(
         self,
@@ -22,6 +24,10 @@ class UnconstrainableNueAnalysis(AnalysisBase):
         self.interaction_space: Binning = None
 
         self.out_file_name:str = out_file_name
+
+    def help(self):
+
+        return self.__doc__
 
     def _initialise(self):
 
@@ -85,10 +91,16 @@ class UnconstrainableNueAnalysis(AnalysisBase):
 
 
 class BasicAnalysis(AnalysisBase):
+    """Will just take the provided samples and make some basic plots of flux, cross sections and event rates
+    """
 
     def __init__(self, out_file_name: str):
 
         self.out_file_name: str = out_file_name
+
+    def help(self):
+
+        return self.__doc__
 
     def _initialise(self):
 
@@ -293,6 +305,8 @@ class BasicAnalysis(AnalysisBase):
 
 
 class FisherInfoAnalysis(AnalysisBase):
+    """Will project the fisher information from the far detector samples to the near detector samples
+    """
 
     def __init__(
         self,
@@ -303,6 +317,10 @@ class FisherInfoAnalysis(AnalysisBase):
 
         self.interaction_space: Binning = None
         self._fisher_info_maps = None
+
+    def help(self):
+
+        return self.__doc__
 
     def _initialise(self):
         
