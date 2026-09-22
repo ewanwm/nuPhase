@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="nuPhase documentation" href="index.html" /> 
+    <link rel="prev" title="Installation" href="getting-started.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -41,7 +41,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">📖 References</span></p>
+              <p class="caption" role="heading"><span class="caption-text">🚀 Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html#usage">Usage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">📖 References</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#events">Events</a><ul>
@@ -56,7 +61,14 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#samples">Samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#materials">Materials</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#oscillations">Oscillations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oscillations">Oscillations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nuPhase.oscillator.OscillationCalculator"><code class="docutils literal notranslate"><span class="pre">OscillationCalculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nuPhase.oscillator.OscillationCalculator.calculate_osc_probs"><code class="docutils literal notranslate"><span class="pre">OscillationCalculator.calculate_osc_probs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nuPhase.oscillator.OscillationCalculator.zero_grad"><code class="docutils literal notranslate"><span class="pre">OscillationCalculator.zero_grad()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#modules">Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#accessing-modules">Accessing Modules</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#base-modules">Base Modules</a></li>
@@ -71,6 +83,8 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ewanwm/nuPhase">GitHub 🔗</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ewanwm/nuPhase/issues">Issues 🔗</a></li>
 </ul>
 
         </div>
@@ -166,6 +180,27 @@
 </section>
 <section id="oscillations">
 <span id="module-nuPhase.materials"></span><h2>Oscillations<a class="headerlink" href="#oscillations" title="Link to this heading"></a></h2>
+<blockquote>
+<div><dl class="py class" id="module-nuPhase.oscillator">
+<dt class="sig sig-object py" id="nuPhase.oscillator.OscillationCalculator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nuPhase.oscillator.</span></span><span class="sig-name descname"><span class="pre">OscillationCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initialisation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'zeros'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nuPhase.oscillator.OscillationCalculator" title="Link to this definition"></a></dt>
+<dd><p>Handles neutrino oscillation calculations</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nuPhase.oscillator.OscillationCalculator.calculate_osc_probs">
+<span class="sig-name descname"><span class="pre">calculate_osc_probs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">antineutrino</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#nuPhase.oscillator.OscillationCalculator.calculate_osc_probs" title="Link to this definition"></a></dt>
+<dd><p>Calculate oscillation probability for a given set of energies</p>
+<p>If energies has shape [n], returned probabilities tensor will have shape [n, 3, 3]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nuPhase.oscillator.OscillationCalculator.zero_grad">
+<span class="sig-name descname"><span class="pre">zero_grad</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nuPhase.oscillator.OscillationCalculator.zero_grad" title="Link to this definition"></a></dt>
+<dd><p>Zero out the gradient of all of the parameters</p>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
 </section>
 <section id="modules">
 <h2>Modules<a class="headerlink" href="#modules" title="Link to this heading"></a></h2>
@@ -197,7 +232,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="nuPhase documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="getting-started.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

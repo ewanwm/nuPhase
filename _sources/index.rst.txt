@@ -7,13 +7,15 @@ nuPhase is a tool for performing studies in long baseline neutrino oscillation e
    :maxdepth: 2
    :caption: 🚀 Getting Started
 
-   intro.md
+   getting-started.md
 
 .. toctree::
    :maxdepth: 2
    :caption: 📖 References
    
    api.rst
+   GitHub 🔗 <https://github.com/ewanwm/nuPhase>
+   Issues 🔗 <https://github.com/ewanwm/nuPhase/issues>
    
    
    

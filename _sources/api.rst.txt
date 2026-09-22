@@ -25,7 +25,7 @@ Materials
 ============
 Oscillations
 ============
-   .. automodule:: nuPhase.oscillations
+   .. automodule:: nuPhase.oscillator
       :members:
       :private-members:
 
@@ -47,7 +47,7 @@ Base Modules
 
 Transformation Modules
 ----------------------
-   .. automodule:: nuPhase.modules.transformation
+   .. automodule:: nuPhase.modules.transformations
       :members:
       :private-members:
 
