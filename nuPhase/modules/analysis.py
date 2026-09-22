@@ -1,5 +1,5 @@
-import abc
 import typing
+from argparse import ArgumentParser, Namespace
 
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -13,30 +13,35 @@ from nuPhase.modes import cc_modes, nc_modes
 from nuPhase.modules.base import AnalysisBase
 
 class UnconstrainableNueAnalysis(AnalysisBase):
+    """Will compare the interaction phase spaces of ND and FD samples and make plots of the parts of the space which are entirely unconstrainable by the ND samples
+    """
 
     def __init__(
-        self,
-        out_file_name: str,
-        interaction_space: Binning,
-        nd_samples: typing.List[Sample],
-        fd_samples: typing.List[Sample]
+        self
     ):
 
-        self.nd_samples: typing.List[Sample] = nd_samples
-        self.fd_samples: typing.List[Sample] = fd_samples
+        self.interaction_space: Binning = None
 
-        self.interaction_space: Binning = interaction_space
+    def help(self):
 
-        self._pdf = PdfPages(out_file_name)
+        return self.__doc__
 
-    def _parse_args():
-        pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+    def _initialise(self):
 
-    def _setup_parser():
-        pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+        self._pdf = PdfPages(self.out_file_name)
 
+    def _finalise(self):
+
+        self._pdf.close()
+
+    def _parse_args(self, args: Namespace):
+
+        self.interaction_space = Binning.from_file(args.interaction_space_binning)
+
+    def _setup_parser(self, parser: ArgumentParser):
+
+        parser.add_argument("--interaction-space-binning", required=True, help="Path to file describing the binning to use for the neutrino interaction space")
+        
     def run(self):
 
         for sample in [*self.nd_samples, *self.fd_samples]:
@@ -72,8 +77,6 @@ class UnconstrainableNueAnalysis(AnalysisBase):
                 ax.set_title(f"{fd_sample.name} Unconstrained by\n{nd_sample.name}")
                 self._pdf.savefig(fig)
 
-        self._pdf.close()
-
     def get_unconstrained(self, nd_sample: Sample, fd_sample: Sample) -> np.ndarray:
 
         nd_event_rate = nd_sample.get_event_rates(binning=self.interaction_space)
@@ -85,21 +88,31 @@ class UnconstrainableNueAnalysis(AnalysisBase):
 
 
 class BasicAnalysis(AnalysisBase):
+    """Will just take the provided samples and make some basic plots of flux, cross sections and event rates
+    """
 
-    def __init__(self, out_file_name: str, samples: typing.List[Sample]):
+    def help(self):
 
-        self.samples = samples
+        return self.__doc__
+
+    def _initialise(self):
+
+        self.samples = self.nd_samples + self.fd_samples
 
         ## open up a pdf to put plots in
-        self._pdf = PdfPages(out_file_name)
+        self._pdf = PdfPages(self.out_file_name)
 
-    def _parse_args():
-        pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+    def _finalise(self):
 
-    def _setup_parser():
+        self._pdf.close()
+
+    def _parse_args(self, args: Namespace):
+
         pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+
+    def _setup_parser(self, parser: ArgumentParser):
+
+        pass
 
     def run(self):
 
@@ -125,8 +138,6 @@ class BasicAnalysis(AnalysisBase):
 
             if sample.binning.n_dims == 2:
                 self.make_sample_binning_rate_plots(sample, 1.0)
-
-        self._pdf.close()
 
     def make_sample_binning_rate_plots(
         self, sample: Sample, min_n_events: float = -np.inf
@@ -155,7 +166,7 @@ class BasicAnalysis(AnalysisBase):
                 count, bin_edges = subsample.flux_hist
                 bin_widths = bin_edges[1:] - bin_edges[:-1]
 
-                count /= bin_widths / 0.05
+                count /= bin_widths
 
                 plt.stairs(count, bin_edges, label=subsample.name)
 
@@ -287,50 +298,56 @@ class BasicAnalysis(AnalysisBase):
 
 
 class FisherInfoAnalysis(AnalysisBase):
+    """Will project the fisher information from the far detector samples to the near detector samples
+    """
 
     def __init__(
-        self,
-        out_file_name: str,
-        nd_samples: typing.List[Sample],
-        fd_samples: typing.List[Sample],
-        interaction_space: Binning,
+        self
     ):
 
-        self._pdf = PdfPages(out_file_name)
+        self.interaction_space: Binning = None
+        self._fisher_info_maps = None
+
+    def help(self):
+
+        return self.__doc__
+
+    def _initialise(self):
+        
+        self._pdf = PdfPages(self.out_file_name)
         self._map_pdf = PdfPages(
-            strip_file_extension(out_file_name, "pdf") + "-fisher-info-map.pdf"
+            strip_file_extension(self.out_file_name, "pdf") + "-fisher-info-map.pdf"
         )
         self._per_event_map_pdf = PdfPages(
-            strip_file_extension(out_file_name, "pdf")
+            strip_file_extension(self.out_file_name, "pdf")
             + "-per-event-fisher-info-by-energy.pdf"
         )
         self._fig = plt.figure()
 
-        self.nd_samples = nd_samples
-        self.fd_samples = fd_samples
+    def _parse_args(self, args: Namespace):
 
-        self.interaction_space = interaction_space
+        self.interaction_space = Binning.from_file(args.interaction_space_binning)
 
-        ## set up fisher information maps
-        self._fisher_info_maps = [ self.make_fisher_info_map(sample=sample) for sample in self.fd_samples ]
+    def _setup_parser(self, parser: ArgumentParser):
 
-    def _parse_args():
-        pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+        parser.add_argument("--interaction-space-binning", required=True, help="Path to file describing the binning to use for the neutrino interaction space")
 
-    def _setup_parser():
-        pass
-        ## TODO Once analysis modules have been integrated into the module system!!
+    def _finalise(self):
 
-    def run(self):
-
-        for nd_sample in self.nd_samples:
-
-            self.do_fisher_info_projection(sample=nd_sample, make_plots=True)
+        self._fisher_info_maps = None
 
         self._pdf.close()
         self._map_pdf.close()
         self._per_event_map_pdf.close()
+        
+    def run(self):
+
+        ## set up fisher information maps
+        self._fisher_info_maps = [ self.make_fisher_info_map(sample=sample) for sample in self.fd_samples ]
+
+        for nd_sample in self.nd_samples:
+
+            self.do_fisher_info_projection(sample=nd_sample, make_plots=True)
 
     def do_fisher_info_projection(self, sample: Sample, make_plots: bool = False):
 

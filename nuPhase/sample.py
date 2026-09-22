@@ -28,7 +28,10 @@ import jsonschema
 from nuPhase.materials import Molecule
 from nuPhase.oscillator import OscillationCalculator
 from nuPhase.event import Event
-from nuPhase.modules.base import TransformationBase, SelectionBase
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from nuPhase.modules.base import TransformationBase, SelectionBase
 
 
 class NuFlavour(IntEnum):
@@ -524,7 +527,7 @@ class SampleBase(abc.ABC):
         return np.array(values, dtype=float)
 
     def apply_selection(
-        self, selection: SelectionBase, progress_bar: bool = False, strip_particle_info: bool = False
+        self, selection: 'SelectionBase', progress_bar: bool = False, strip_particle_info: bool = False
     ) -> "SampleBase":
         """Apply a selection to the events in this sample
 
@@ -562,7 +565,7 @@ class SampleBase(abc.ABC):
 
         return new_sample
 
-    def apply_transformation(self, transformation: TransformationBase, progress_bar: bool = False, strip_particle_info: bool =False) -> "SampleBase":
+    def apply_transformation(self, transformation: 'TransformationBase', progress_bar: bool = False, strip_particle_info: bool =False) -> "SampleBase":
         """Apply a transformation to all events in this sample
 
         .. warning::
@@ -570,7 +573,7 @@ class SampleBase(abc.ABC):
             strip_particle_info will This will change all references to event so should be used for the last transformation / selection in the chain
 
         :param transformation: The transformation to be applied
-        :type transformation: TransformationBase
+        :type transformation: 'TransformationBase'
         :param progress_bar: If true, will print a progress bar showing how many events have been processed, defaults to False
         :type progress_bar: bool, optional
         :param strip_particle_info: If true, all particle level info will be stripped from the event - this saves memory but means you can't apply any more selections or transformations that require particle level info
@@ -584,7 +587,7 @@ class SampleBase(abc.ABC):
         iterator = self.events
         if progress_bar:
             iterator = tqdm(
-                self.events, desc=f"applying transformation [{transformation.name}] to {self.name}"
+                self.events, desc=f"applying transformation [{type(transformation).__name__}] to {self.name}"
             )
 
         ## apply the selection
@@ -813,7 +816,7 @@ class SubSample(SampleBase):
         return self
 
     def get_integrated_flux(
-        self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05
+        self, bin_width_normalised: bool = False, scale_factor: float = 1 / 0.05
     ) -> float:
         """Get the integral of the flux histogram in this SubSample
 
@@ -1123,7 +1126,7 @@ class Sample(SampleBase):
             )
 
     def apply_selection(
-        self, selection: SelectionBase, progress_bar: bool = False, strip_particle_info: bool = False
+        self, selection: 'SelectionBase', progress_bar: bool = False, strip_particle_info: bool = False
     ) -> "Sample":
 
         new_subsamples = []

@@ -145,10 +145,6 @@ def setup_parser():
     parser = ArgumentParser("make-plots",
         formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40))
 
-    parser.add_argument(
-        "-o", "--output", type=str, help="name of output file", required=True
-    )
-
     ## set up subcommand parsers
     subparsers = parser.add_subparsers(title = "Commands", required=True, dest="command")
 
@@ -167,37 +163,41 @@ def setup_parser():
     prepare_subsample_parser.add_argument('--antinu', help="The flag to declare that this subsample was generated for antinueutrino (RHC) mode", action="store_true", required=False)
     prepare_subsample_parser.add_argument('--target-pot', help="The number of POT to scale the sample to - if not specified then the base pot will be used", required=False, default=None, type=float)
     prepare_subsample_parser.add_argument('--max-n-events', "-n", help="Maximum number of events to read from the input file - if not specified then all will be read", required=False, default=None, type=int)
+    prepare_subsample_parser.add_argument(
+        "-o", "--output-file", type=str, help="name of output file", required=True
+    )
 
     ## set up sample maker command
     prepare_sample_parser = subparsers.add_parser("prepare-sample", help="'prepare' a sample - Combine subsamples into a single Sample object that can be passed to analysis modules")
     prepare_sample_parser.set_defaults(func = prepare_sample)
     prepare_sample_parser.add_argument('--subsamples', nargs='+', default=[], help="The name of the input file describing the MC events", required=True)
     prepare_sample_parser.add_argument('--binning', help="Path to config file defining the binning for the sample", required=True, type=str)
-    prepare_sample_parser.add_argument('--name', help="Name for this sample", required=True, type=str)
-      
-    ## set up fisher information command
-    fisher_info_parser = subparsers.add_parser("fisher-analysis", help="Perform Fisher information based analysis - will construct fisher info map from FD samples, propagate the info through to the nd samples")
-    fisher_info_parser.set_defaults(func = fisher_analysis)
-    fisher_info_parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
-    fisher_info_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
+    prepare_sample_parser.add_argument('--name', help="Name for this sample", required=True, type=str) 
+    prepare_sample_parser.add_argument(
+        "-o", "--output-file", type=str, help="name of output file", required=True
+    )
 
-    ## set up basic analysis command
-    basic_analysis_parser = subparsers.add_parser("basic-analysis", help="Perform basic analysis - make plots of the provided samples... that's it really")
-    basic_analysis_parser.set_defaults(func = basic_analysis)
-    basic_analysis_parser.add_argument('--samples', nargs='+', default=[], help="list of samples to consider", required=True)
+    ## set up parser to do analysis
+    do_analysis_parser = subparsers.add_parser("do-analysis", help="Apply some analysis module",
+        formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
+    )
+    do_analysis_parser.set_defaults(func = do_analysis)
+    do_analysis_subparsers = do_analysis_parser.add_subparsers(title = "Analyses", dest="analysis")
     
-    ## set up unconstrainable nue analysis command
-    unconstrainable_analysis_parser = subparsers.add_parser("unconstrainable-events-analysis", help="Perform analysis to find events in far detector samples that are unconstrainable by ND samples")
-    unconstrainable_analysis_parser.set_defaults(func = unconstrainable_analysis)
-    unconstrainable_analysis_parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
-    unconstrainable_analysis_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
-    
+    for analysis in ModuleList().get_analysis_modules():
+        module_instance = analysis()
+        module_parser = do_analysis_subparsers.add_parser(analysis.__name__, help=module_instance.help())
+        module_instance.setup_parser(module_parser)
+
     ## set up parser for applying transform to a sample
     apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample",
         formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
     )
     apply_transform_parser.set_defaults(func = apply_transformation)
     apply_transform_parser.add_argument("--strip-particle-info", action="store_true", help="Strip particle level information from the event. Saves space but won't be able to apply any more selections or transformations requiring particle level info")
+    apply_transform_parser.add_argument(
+        "-o", "--output-file", type=str, help="name of output file", required=True
+    )
     transformation_subparsers = apply_transform_parser.add_subparsers(title = "Transformations", dest="transformation")
 
     for transformation in ModuleList().get_selection_modules() + ModuleList().get_transformation_modules():
@@ -207,7 +207,7 @@ def setup_parser():
         
     return parser
 
-def apply_transformation(args, output_file):
+def apply_transformation(args):
 
     sample = Sample.from_file(args.input_sample)
 
@@ -219,38 +219,30 @@ def apply_transformation(args, output_file):
 
     if ModuleList().get_module_type(module) == moduleTypeEnum.transformation:
         module_instance.initialise(sample)
-        sample.apply_transformation(transformation=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(output_file)
+        sample.apply_transformation(transformation=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(args.output_file)
     elif ModuleList().get_module_type(module) == moduleTypeEnum.selection:
         module_instance.initialise(sample)
-        sample.apply_selection(selection=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(output_file)
+        sample.apply_selection(selection=module_instance, progress_bar=args.progress, strip_particle_info=args.strip_particle_info).to_file(args.output_file)
     else:
         raise ValueError(f"provided module ({args.transformation}) is not a transformation or selection :(")
 
     module_instance.finalise(sample)
 
-def fisher_analysis(args, output_file):
+def do_analysis(args):
 
-    ## set up samples
-    nd_samples = [ Sample.from_file(file_name) for file_name in args.nd_samples ]
-    fd_samples = [ Sample.from_file(file_name) for file_name in args.fd_samples ]
+    module = ModuleList().get_module(args.analysis)
 
-    analysis = FisherInfoAnalysis(
-        output_file + "-fisher-analysis.pdf",
-        nd_samples=nd_samples,
-        fd_samples=fd_samples,
-        interaction_space=Binning(
-            ["Enu_true", "q3", "q0"],
-            bin_edges=[flux_bins, np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)],
-        )
-    )
+    ## create an instance of the module class
+    module_instance = module()
+    module_instance.parse_args(args)
 
-    analysis.plot_fisher_info_map(variables=["q3", "q0"], slice_var="Enu_true")
-    analysis.plot_fisher_info_map(
-        variables=["q3", "q0"], slice_var="Enu_true", avg_per_event=True
-    )
-    analysis.run()
+    module_instance.initialise()
 
-def prepare_subsample(args, output_file):
+    module_instance.run()
+
+    module_instance.finalise()
+
+def prepare_subsample(args):
 
     initial_flavour = flavour_from_name(args.initial_flavour)
     final_flavour = flavour_from_name(args.final_flavour)
@@ -285,9 +277,9 @@ def prepare_subsample(args, output_file):
     subsample.fill_from_file(nuisance_file, progress_bar=True, max_n_events=args.max_n_events)
 
     ## save it to disk
-    subsample.to_file(output_file)
+    subsample.to_file(args.output_file)
 
-def prepare_sample(args, output_file):
+def prepare_sample(args):
 
     ## create binning object
     binning = Binning.from_file(args.binning)
@@ -298,26 +290,7 @@ def prepare_sample(args, output_file):
         subsamples=[SubSample.from_file(file_name) for file_name in args.subsamples],
         name=args.name
     ## save it to a nuPhase file
-    ).to_file(output_file)
-
-def basic_analysis(args, output_file):
-
-    BasicAnalysis(
-        output_file + "-basic-plots.pdf",
-        samples=[ Sample.from_file(file_name) for file_name in args.samples ],
-    ).run()
-
-def unconstrainable_analysis(args, output_file):
-
-    UnconstrainableNueAnalysis(
-        output_file + "-unconstrainable.pdf",
-        nd_samples=[ Sample.from_file(file_name) for file_name in args.nd_samples ],
-        fd_samples=[ Sample.from_file(file_name) for file_name in args.fd_samples ],
-        interaction_space=Binning(
-            ["q3", "q0"], bins=[np.linspace(0, 2.0, 50), np.linspace(0, 2.0, 50)]
-        ),
-    ).run()
-
+    ).to_file(args.output_file)
 
 def main():
 
@@ -326,10 +299,8 @@ def main():
     ## parse args
     args = parser.parse_args(sys.argv[1:])
 
-    output_file: str = strip_file_extension(args.output, "pdf")
-
     ## run the relevant function
-    args.func(args, output_file)
+    args.func(args)
 
 if __name__ == "__main__":
     main()
