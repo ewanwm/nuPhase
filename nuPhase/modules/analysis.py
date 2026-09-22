@@ -17,13 +17,10 @@ class UnconstrainableNueAnalysis(AnalysisBase):
     """
 
     def __init__(
-        self,
-        out_file_name: str,
+        self
     ):
 
         self.interaction_space: Binning = None
-
-        self.out_file_name:str = out_file_name
 
     def help(self):
 
@@ -43,7 +40,7 @@ class UnconstrainableNueAnalysis(AnalysisBase):
 
     def _setup_parser(self, parser: ArgumentParser):
 
-        parser.add_argument("--interaction_space_binning", required=True, help="Path to file describing the binning to use for the neutrino interaction space")
+        parser.add_argument("--interaction-space-binning", required=True, help="Path to file describing the binning to use for the neutrino interaction space")
         
     def run(self):
 
@@ -93,10 +90,6 @@ class UnconstrainableNueAnalysis(AnalysisBase):
 class BasicAnalysis(AnalysisBase):
     """Will just take the provided samples and make some basic plots of flux, cross sections and event rates
     """
-
-    def __init__(self, out_file_name: str):
-
-        self.out_file_name: str = out_file_name
 
     def help(self):
 
@@ -173,7 +166,7 @@ class BasicAnalysis(AnalysisBase):
                 count, bin_edges = subsample.flux_hist
                 bin_widths = bin_edges[1:] - bin_edges[:-1]
 
-                count /= bin_widths / 0.05
+                count /= bin_widths
 
                 plt.stairs(count, bin_edges, label=subsample.name)
 
@@ -309,11 +302,8 @@ class FisherInfoAnalysis(AnalysisBase):
     """
 
     def __init__(
-        self,
-        out_file_name: str,
+        self
     ):
-
-        self.out_file_name: str = out_file_name
 
         self.interaction_space: Binning = None
         self._fisher_info_maps = None

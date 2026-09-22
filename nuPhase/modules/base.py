@@ -223,13 +223,16 @@ class AnalysisBase(ModuleBase):
 
         super().setup_parser(parser)
 
-        parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
-        parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
+        parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=False)
+        parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=False)
+        parser.add_argument('--output-file', "-o", help="Path to output the results of the analysis to", required=True)
 
     def parse_args(self, args):
 
         super().parse_args(args)
     
+        self.out_file_name: str = args.output_file
+
         self.nd_samples = [Sample.from_file(file_name) for file_name in args.nd_samples]
         self.fd_samples = [Sample.from_file(file_name) for file_name in args.fd_samples]
 
