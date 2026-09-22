@@ -8,10 +8,8 @@ import abc
 import typing
 from argparse import ArgumentParser, Namespace
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from nuPhase.sample import Sample
-    from nuPhase.event import Event
+from nuPhase.sample import Sample
+from nuPhase.event import Event
 
 class ModuleBase(abc.ABC):
     """Base class of all modules
@@ -188,21 +186,50 @@ class AnalysisBase(ModuleBase):
     """
 
     @abc.abstractmethod
-    def run() -> None:
+    def run(self) -> None:
 
         raise NotImplementedError()
 
-    def initialise() -> None:
+    def initialise(self) -> None:
+        """Set up the module
+        """
+
+        ## call user specified code
+        self._initialise()
+
+    def finalise(self) -> None:
+        """Tear down the module
+        """
+
+        ## call user specified code
+        self._finalise()
+
+    def _initialise(self) -> None:
         """Any initialisation of the analysis should go here. 
         e.g. opening output files, reading inputs etc.
         """
 
         pass
 
-    def finalise() -> None:
+    def _finalise(self) -> None:
         """Any teardown of the analysis should go here.
 
         e.g. closing output or input files 
         """
 
         pass
+
+    def setup_parser(self, parser):
+
+        super().setup_parser(parser)
+
+        parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
+        parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
+
+    def parse_args(self, args):
+
+        super().parse_args(args)
+    
+        self.nd_samples = [Sample.from_file(file_name) for file_name in args.nd_samples]
+        self.fd_samples = [Sample.from_file(file_name) for file_name in args.fd_samples]
+
