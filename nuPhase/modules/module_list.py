@@ -108,20 +108,29 @@ class ModuleList(metaclass=Singleton):
 
         return self._modules
 
-    def get_transformation_modules(self) -> typing.List[typing.Type[ModuleBase]]:
+    def get_transformation_modules(self) -> typing.List[typing.Type[TransformationBase]]:
         """Get a list of all the registered transformation modules
 
         :return: All the registered transformation modules
-        :rtype: typing.List[typing.Type[ModuleBase]]
+        :rtype: typing.List[typing.Type[TransformationBase]]
         """
 
         return self._transformation_modules
 
-    def get_selection_modules(self) -> typing.List[typing.Type[ModuleBase]]:
+    def get_analysis_modules(self) -> typing.List[typing.Type[AnalysisBase]]:
+        """Get a list of all the registered analysis modules
+
+        :return: All the registered analysis modules
+        :rtype: typing.List[typing.Type[AnalysisBase]]
+        """
+
+        return self._analysis_modules
+
+    def get_selection_modules(self) -> typing.List[typing.Type[SelectionBase]]:
         """Get a list of all the registered selection modules
 
         :return: All the registered selection modules
-        :rtype: typing.List[typing.Type[ModuleBase]]
+        :rtype: typing.List[typing.Type[SelectionBase]]
         """
 
         return self._selection_modules
