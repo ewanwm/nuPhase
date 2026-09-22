@@ -587,7 +587,7 @@ class SampleBase(abc.ABC):
         iterator = self.events
         if progress_bar:
             iterator = tqdm(
-                self.events, desc=f"applying transformation [{transformation.name}] to {self.name}"
+                self.events, desc=f"applying transformation [{type(transformation).__name__}] to {self.name}"
             )
 
         ## apply the selection
@@ -816,7 +816,7 @@ class SubSample(SampleBase):
         return self
 
     def get_integrated_flux(
-        self, bin_width_normalised: bool = True, scale_factor: float = 1 / 0.05
+        self, bin_width_normalised: bool = False, scale_factor: float = 1 / 0.05
     ) -> float:
         """Get the integral of the flux histogram in this SubSample
 
