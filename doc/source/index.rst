@@ -11,7 +11,7 @@ nuPhase is a tool for performing studies in long baseline neutrino oscillation e
 
 .. toctree::
    :maxdepth: 2
-   :caption: 📖 References
+   :caption: API
    
    api.rst
    
