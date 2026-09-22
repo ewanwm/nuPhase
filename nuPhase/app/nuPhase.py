@@ -175,23 +175,18 @@ def setup_parser():
     prepare_sample_parser.add_argument('--binning', help="Path to config file defining the binning for the sample", required=True, type=str)
     prepare_sample_parser.add_argument('--name', help="Name for this sample", required=True, type=str)
       
-    ## set up fisher information command
-    fisher_info_parser = subparsers.add_parser("fisher-analysis", help="Perform Fisher information based analysis - will construct fisher info map from FD samples, propagate the info through to the nd samples")
-    fisher_info_parser.set_defaults(func = fisher_analysis)
-    fisher_info_parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
-    fisher_info_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
+    ## set up parser to do analysis
+    do_analysis_parser = subparsers.add_parser("do-analysis", help="Apply some analysis module",
+        formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
+    )
+    do_analysis_parser.set_defaults(func = do_analysis)
+    do_analysis_subparsers = do_analysis_parser.add_subparsers(title = "Analyses", dest="analysis")
+    
+    for analysis in ModuleList().get_analysis_modules():
+        module_instance = analysis(None)
+        module_parser = do_analysis_subparsers.add_parser(analysis.__name__, help=module_instance.help())
+        module_instance.setup_parser(module_parser)
 
-    ## set up basic analysis command
-    basic_analysis_parser = subparsers.add_parser("basic-analysis", help="Perform basic analysis - make plots of the provided samples... that's it really")
-    basic_analysis_parser.set_defaults(func = basic_analysis)
-    basic_analysis_parser.add_argument('--samples', nargs='+', default=[], help="list of samples to consider", required=True)
-    
-    ## set up unconstrainable nue analysis command
-    unconstrainable_analysis_parser = subparsers.add_parser("unconstrainable-events-analysis", help="Perform analysis to find events in far detector samples that are unconstrainable by ND samples")
-    unconstrainable_analysis_parser.set_defaults(func = unconstrainable_analysis)
-    unconstrainable_analysis_parser.add_argument('--fd-samples', nargs='+', default=[], help="list of far detector samples to consider", required=True)
-    unconstrainable_analysis_parser.add_argument('--nd-samples', nargs='+', default=[], help="list of near detector samples to consider", required=True)
-    
     ## set up parser for applying transform to a sample
     apply_transform_parser = subparsers.add_parser("apply-transformation", help="Apply some transformation to a sample",
         formatter_class=lambda prog: HelpFormatter(prog,max_help_position=40)
@@ -227,6 +222,20 @@ def apply_transformation(args, output_file):
         raise ValueError(f"provided module ({args.transformation}) is not a transformation or selection :(")
 
     module_instance.finalise(sample)
+
+def do_analysis(args, output_file):
+
+    module = ModuleList().get_module(args.analysis)
+
+    ## create an instance of the module class
+    module_instance = module(out_file_name=output_file)
+    module_instance.parse_args(args)
+
+    module_instance.initialise()
+
+    module_instance.run()
+
+    module_instance.finalise()
 
 def fisher_analysis(args, output_file):
 
@@ -326,10 +335,8 @@ def main():
     ## parse args
     args = parser.parse_args(sys.argv[1:])
 
-    output_file: str = strip_file_extension(args.output, "pdf")
-
     ## run the relevant function
-    args.func(args, output_file)
+    args.func(args, args.output)
 
 if __name__ == "__main__":
     main()
