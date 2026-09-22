@@ -334,9 +334,9 @@ class SelectionNue0Pi0P(SelectionBase):
 
     def _setup_parser(self, parser: ArgumentParser):
 
-        parser.add_argument("--electron-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main electron")
-        parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
-        parser.add_argument("--pion-threshold", type=float, required=False, default=0.0, help="Threshold below which any pions will be ignored and proton related variables will not be filled")
+        parser.add_argument("--electron-threshold", type=float, required=False, default=0.1, help="The momentum threshold of the main electron")
+        parser.add_argument("--proton-threshold", type=float, required=False, default=1.41, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
+        parser.add_argument("--pion-threshold", type=float, required=False, default=0.212, help="Threshold below which any pions will be ignored and proton related variables will not be filled")
         
     def _parse_args(self, args: Namespace):
 
@@ -406,9 +406,9 @@ class SelectionNumu0Pi0P(SelectionBase):
 
     def _setup_parser(self, parser: ArgumentParser):
 
-        parser.add_argument("--muon-threshold", type=float, required=False, default=0.0, help="The momentum threshold of the main muon")
-        parser.add_argument("--proton-threshold", type=float, required=False, default=0.0, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
-        parser.add_argument("--pion-threshold", type=float, required=False, default=0.0, help="Threshold below which any pions will be ignored and proton related variables will not be filled")
+        parser.add_argument("--muon-threshold", type=float, required=False, default=0.2, help="The momentum threshold of the main muon")
+        parser.add_argument("--proton-threshold", type=float, required=False, default=1.41, help="Threshold below which any protons will be ignored and proton related variables will not be filled")
+        parser.add_argument("--pion-threshold", type=float, required=False, default=0.212, help="Threshold below which any pions will be ignored and proton related variables will not be filled")
         
     def _parse_args(self, args: Namespace):
 
