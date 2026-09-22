@@ -1,3 +1,10 @@
+"""This module handles samples and subsamples of events
+
+These provide a handle that can be passed to later downstream 
+modules to perform analysis and can also be transformed by 
+transformation and selection modules.
+"""
+
 import typing
 from enum import IntEnum
 import pickle
@@ -394,17 +401,18 @@ class NuisanceFile:
     This is really just a wrapper class for accessing uproot objects.
     To access the data stored in a file you should use the `with` keyword like:
 
-    ```
-    file = NuisanceFile(...)
+    .. code-block:: python
 
-    with file as f:
-        ## do stuff with data stored in file
+        file = NuisanceFile(...)
 
-    ## blablabla
-    ```
+        with file as f:
+            ## do stuff with data stored in file
 
-    This provides a safe way of accessing the data stored in the nuisance file 
-    without consuming unnnecessary memory resources.
+        ## blablabla
+
+        This provides a safe way of accessing the data stored in the nuisance file 
+        without consuming unnnecessary memory resources.
+
     """
 
     def __init__(self, file_name: str, pre_selection: str = None):
@@ -522,7 +530,7 @@ class SampleBase(abc.ABC):
 
         Will return a copy of this subsapmple with only events that pass the selection in it
 
-        .. warn::
+        .. warning::
             
             strip_particle_info will This will change all references to event so should be used for the last transformation / selection in the chain
          
@@ -557,7 +565,7 @@ class SampleBase(abc.ABC):
     def apply_transformation(self, transformation: TransformationBase, progress_bar: bool = False, strip_particle_info: bool =False) -> "SampleBase":
         """Apply a transformation to all events in this sample
 
-        .. warn::
+        .. warning::
             
             strip_particle_info will This will change all references to event so should be used for the last transformation / selection in the chain
 
