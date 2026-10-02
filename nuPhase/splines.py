@@ -22,6 +22,8 @@ class InterpolationBase(abc.ABC):
         raise NotImplementedError()
 
 class MonotonicInterpolation(InterpolationBase):
+    """Cubic interpolation with monotonicity (between knots) enforced
+    """
 
     def __init__(self):
 
@@ -82,6 +84,8 @@ class MonotonicInterpolation(InterpolationBase):
         return coefficients
     
 class LinearInterpolation(InterpolationBase):
+    """Piecewise linear interpolation
+    """
 
     def __init__(self):
 
@@ -102,30 +106,41 @@ class LinearInterpolation(InterpolationBase):
         return coefficients
 
 class SplineArray:
+    """An array of splines for some parameter
+    """
 
     def __init__(
         self,
-        parameters: typing.List[str],
-        knot_x_positions: typing.List[np.ndarray],
-        knot_y_positions: typing.List[np.ndarray],
+        knot_x_positions: np.ndarray,
+        knot_y_positions: np.ndarray,
         interpolation: InterpolationBase
     ):
+        """
+        :param knot_x_positions: X positions of knots for the parameter - should be a 1D array (n_knots)
+        :type knot_x_positions: np.ndarray
+        :param knot_y_positions: Y positions of knots for the parameter - should be 2D array with shape (n_rows, n_knots)
+        :type knot_y_positions: np.ndarray
+        :param interpolation: The interpolation function to use to calculate segment coefficients
+        :type interpolation: InterpolationBase
+        :raises ValueError: If the provided arrays have the wrong number of dimensions or if the number of knots implied by the knot_x_positions array and knot_y_positions array are inconsistent
+        :raises TypeError: If the provided knot_x_positions or knot_y_positions are not numpy arrays
+        """
 
         self.interpolation: InterpolationBase = interpolation
 
-        self.parameter_names: typing.List[str] = parameters
-        self.n_params: int = len(self.parameter_names)
+        self.knot_x_positions: np.ndarray = knot_x_positions
+        self.knot_y_positions: np.ndarray = knot_y_positions
 
-        self.knot_x_positions: typing.List[np.ndarray] = knot_x_positions
-        self.knot_y_positions: typing.List[np.ndarray] = knot_y_positions
-
-        if len(knot_x_positions) != self.n_params:
-
-            raise ValueError("Knot position shape does not match size of parameter name list!")
-
-        if len(knot_y_positions) != self.n_params:
-
-            raise ValueError("Knot array shape does not match size of parameter name list!")
+        if type(knot_x_positions) != np.ndarray:
+            raise TypeError(f"Knot X position array must be numpy array (is {type(knot_x_positions)})")
+        if type(knot_y_positions) != np.ndarray:
+            raise TypeError(f"Knot Y position array must be numpy array (is {type(knot_y_positions)})")
+        if knot_x_positions.ndim != 1:
+            raise ValueError(f"Knot X position array must be 1 dimensional! got {knot_x_positions.ndim}")
+        if knot_y_positions.ndim != 2:
+            raise ValueError(f"Knot Y position array must be 2 dimensional! got {knot_y_positions.ndim}")
+        if knot_x_positions.shape[0] != knot_y_positions.shape[1]:
+            raise ValueError(f"Shape for knot X and Y arrays is inconsistent! (x array implies {knot_y_positions.shape[0]} knots, y array implies {knot_y_positions.shape[1]})")
 
         ## check that all arrays have same number of rows (events / bins)
         for param_knots in self.knot_y_positions[1:]:
@@ -133,91 +148,83 @@ class SplineArray:
             if param_knots.shape[0] != self.knot_y_positions[0].shape[0]:
                 raise ValueError("Knot array shapes are inconsistent!")
 
-        self.n_rows: int = self.knot_y_positions[0].shape[0]
-        self.n_knots: typing.List[int] = [self.knot_x_positions[i_param].shape[0] for i_param in range(self.n_params)]
+        self.n_rows: int = self.knot_y_positions.shape[0]
+        self.n_knots: int = self.knot_x_positions.shape[0]
 
-        self.segment_dx: typing.List[np.ndarray] = [np.zeros(self.n_knots[i_param] + 1) for i_param in range (self.n_params)]
-        for i_param in range(self.n_params):
-            self.segment_dx[i_param][1:-1] = self.knot_x_positions[i_param][1:] - self.knot_x_positions[i_param][:-1]
-            self.segment_dx[i_param][0]  = self.segment_dx[i_param][1]
-            self.segment_dx[i_param][-1] = self.segment_dx[i_param][-2]
+        ## size of segments
+        self.segment_dx: typing.List[np.ndarray] = np.zeros(self.n_knots + 1)
+        self.segment_dx[1:-1] = self.knot_x_positions[1:] - self.knot_x_positions[:-1]
+        self.segment_dx[0]  = self.segment_dx[1]
+        self.segment_dx[-1] = self.segment_dx[-2]
                                                     
         ## Create coefficient array that will be filled using user supplied coefficient calculator
-        self.coefficients_array: typing.List[np.ndarray] = []
-        for i_param in range(self.n_params):
+        self.coefficients_array: np.ndarray = np.zeros((self.n_rows, self.n_knots + 1, 3))
 
-            param_n_knots = self.knot_x_positions[i_param].shape[0]
-            values = np.zeros((self.n_rows, param_n_knots + 1, 3))
-            self.coefficients_array.append(values)
+        self._calculate_coefficients()
 
-        self.calculate_coefficients()
+    def _calculate_coefficients(self):
 
-    def calculate_coefficients(self):
+        ## calculate coefficients
+        interpolation_coefficients = self.interpolation.calculate_coefficients(
+            self.knot_x_positions, self.knot_y_positions
+        )
 
-        ## calculate coefficients for each parameter
-        for i_param in range(self.n_params):
-
-            interpolation_coefficients = self.interpolation.calculate_coefficients(
-                self.knot_x_positions[i_param], self.knot_y_positions[i_param]
-            )
-
-            ## check the shape of the coeficients returned by interpolation object
-            if self.coefficients_array[i_param][:, 1:-1, :].shape != interpolation_coefficients.shape:
-                raise ValueError(f"interpolation coefficients for parameter {self.parameter_names[i_param]} from {self.interpolation.name} are the wrong shape! Expected{self.coefficients_array[i_param][:, 1:-1, :].shape} but got {interpolation_coefficients.shape}")
-            
-            self.coefficients_array[i_param][:, 1:-1, :] = interpolation_coefficients
-            self.coefficients_array[i_param][:, 0, :] = self.coefficients_array[i_param][:, 1, :]
-            self.coefficients_array[i_param][:, -1, :] = self.coefficients_array[i_param][:, -2, :]
-
-    def evaluate(self, parameter_values: Tensor):
+        ## check the shape of the coeficients returned by interpolation object
+        if self.coefficients_array[:, 1:-1, :].shape != interpolation_coefficients.shape:
+            raise ValueError(f"interpolation coefficients from {self.interpolation.name} are the wrong shape! Expected{self.coefficients_array[:, 1:-1, :].shape} but got {interpolation_coefficients.shape}")
         
-        parameter_values_array = parameter_values.numpy()
+        self.coefficients_array[:, 1:-1, :] = interpolation_coefficients
 
-        if parameter_values_array.shape[0] != self.n_params:
-            raise ValueError(f"Wrong number of values! expected {self.n_params} but got {parameter_values_array.shape[0]}")
+        ## TODO: Behaviour outside of interpolation bounds should be configurable!!
+        self.coefficients_array[:, 0, :] = self.coefficients_array[:, 1, :]
+        self.coefficients_array[:, -1, :] = self.coefficients_array[:, -2, :]
 
-        ## get which segment the parameter values lie in
-        segment_indices = []
-        for i_param in range(self.n_params):
-            
-            index = np.digitize(parameter_values_array[i_param], self.knot_x_positions[i_param])
+    def evaluate(self, parameter_value: Tensor) -> Tensor:
+        """Evaluate the weights for a given parameter value
 
-            segment_indices.append(index)
+        :param parameter_value: The value of the parameter
+        :type parameter_value: Tensor
+        :raises TypeError: If the provided parameter value is not a Tensor
+        :raises ValueError: If the provided value Tensor has the wrong shape
+        :return: 1D Tensor of weights - shape is (n_rows) which is determined by the number of rows in the provided knot array
+        :rtype: Tensor
+        """
 
-        weights = Tensor.ones((self.n_rows,))
+        if type(parameter_value) != Tensor:
+            raise TypeError(f"parameter value should be a Tensor! (is {type(parameter_value)})")
+        if parameter_value.get_shape() != []:
+            raise ValueError(f"Provided parameter value should be a single scalar value!! has shape {parameter_value.get_shape()}")
+        
+        parameter_value_float = parameter_value.numpy()
 
-        for i_param in range(self.n_params):
+        ## get which segment the parameter value lies in
+        segment_index = np.digitize(parameter_value_float, self.knot_x_positions)
 
-            segment_index = segment_indices[i_param]
+        ## get the position of the anchor knot
+        x0 = self.knot_x_positions[np.clip(segment_index - 1, 0, self.n_knots -2)]
+        y0 = self.knot_y_positions[:, np.clip(segment_index - 1, 0, self.n_knots -2)]
 
-            ## get the position of the anchor knot
-            x0 = self.knot_x_positions[i_param][np.clip(segment_index - 1, 0, self.n_knots[i_param] -2)]
-            y0 = self.knot_y_positions[i_param][:, np.clip(segment_index - 1, 0, self.n_knots[i_param] -2)]
+        ## get the normalised segment coordinate
+        t = (parameter_value + -Tensor(x0))
+        squared = tensor.mul(t, t)
+        cubed   = tensor.mul(squared, t)
 
-            ## higher order polynomial values
-            t = (parameter_values.get_values([i_param]) + -Tensor(x0))
-            squared = tensor.mul(t, t)
-            cubed   = tensor.mul(squared, t)
+        ## TODO: Have the "current" coefficients cached and check if the segment index has changed before fetching whole new ones
+        segment_coefficients_1 = self.coefficients_array[:, segment_index, 0]
+        segment_coefficients_2 = self.coefficients_array[:, segment_index, 1]
+        segment_coefficients_3 = self.coefficients_array[:, segment_index, 2]
 
-            ## TODO: Have the "current" coefficients cached and check if the segment index has changed before fetching whole new ones
-            segment_coefficients_1 = self.coefficients_array[i_param][:, segment_index, 0]
-            segment_coefficients_2 = self.coefficients_array[i_param][:, segment_index, 1]
-            segment_coefficients_3 = self.coefficients_array[i_param][:, segment_index, 2]
+        ## tensorify them
+        self.coefficients_1_tensor = Tensor(segment_coefficients_1)
+        self.coefficients_2_tensor = Tensor(segment_coefficients_2)
+        self.coefficients_3_tensor = Tensor(segment_coefficients_3)
 
-            ## tensorify them
-            self.coefficients_1_tensor = Tensor(segment_coefficients_1)
-            self.coefficients_2_tensor = Tensor(segment_coefficients_2)
-            self.coefficients_3_tensor = Tensor(segment_coefficients_3)
+        ## calculate weights for the current parameter
+        param_weights = (
+            Tensor(y0) + 
+            tensor.mul(t, self.coefficients_1_tensor) + 
+            tensor.mul(squared, self.coefficients_2_tensor) + 
+            tensor.mul(cubed, self.coefficients_3_tensor)
+        )
 
-            ## calculate weights for the current parameter
-            param_weights = (
-                Tensor(y0) + 
-                tensor.mul(t, self.coefficients_1_tensor) + 
-                tensor.mul(squared, self.coefficients_2_tensor) + 
-                tensor.mul(cubed, self.coefficients_3_tensor)
-            )
-
-            ## add to total weight
-            weights = tensor.mul(weights, param_weights)
-
-        return weights
+        return param_weights
