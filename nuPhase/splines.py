@@ -1,7 +1,5 @@
-import nuTens as nt
 import numpy as np
 
-from nuTens import dtype, units, tensor, autograd
 from nuTens.tensor import Tensor
 
 import math as m
@@ -205,9 +203,9 @@ class SplineArray:
         y0 = self.knot_y_positions[:, np.clip(segment_index - 1, 0, self.n_knots -2)]
 
         ## get the normalised segment coordinate
-        t = (parameter_value + -Tensor(x0))
-        squared = tensor.mul(t, t)
-        cubed   = tensor.mul(squared, t)
+        t = parameter_value - Tensor(x0)
+        squared = t * t
+        cubed   = squared * t
 
         ## TODO: Have the "current" coefficients cached and check if the segment index has changed before fetching whole new ones
         segment_coefficients_1 = self.coefficients_array[:, segment_index, 0]
@@ -222,9 +220,9 @@ class SplineArray:
         ## calculate weights for the current parameter
         param_weights = (
             Tensor(y0) + 
-            tensor.mul(t, self.coefficients_1_tensor) + 
-            tensor.mul(squared, self.coefficients_2_tensor) + 
-            tensor.mul(cubed, self.coefficients_3_tensor)
+            t       * self.coefficients_1_tensor + 
+            squared * self.coefficients_2_tensor + 
+            cubed   * self.coefficients_3_tensor
         )
 
         return param_weights
