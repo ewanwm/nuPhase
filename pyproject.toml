@@ -34,7 +34,7 @@
   ]
 
   dependencies = [
-    "nuTens>=0.6",
+    "nuTens>=0.7",
     "matplotlib",
     "tqdm",
     "uproot",
